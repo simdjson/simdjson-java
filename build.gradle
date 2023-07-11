@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+    id 'me.champeau.jmh' version '0.7.1'
+}
+
+group = 'com.github.piotrrzysko'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(20)
+    }
+}
+
+ext {
+    junitVersion = '5.9.1'
+}
+
+dependencies {
+    testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.24.2'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: junitVersion
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: junitVersion
+    testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: junitVersion
+}
+
+test {
+    useJUnitPlatform()
+}
