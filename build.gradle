@@ -1,10 +1,13 @@
+import me.champeau.jmh.JmhBytecodeGeneratorTask
+import org.gradle.internal.os.OperatingSystem
+
 plugins {
     id 'java'
     id 'me.champeau.jmh' version '0.7.1'
 }
 
 group = 'com.github.piotrrzysko'
-version = '1.0-SNAPSHOT'
+version = '0.0.1-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -21,6 +24,10 @@ ext {
 }
 
 dependencies {
+    jmhImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
+    jmhImplementation group: 'com.alibaba.fastjson2', name: 'fastjson2', version: '2.0.35'
+    jmhImplementation group: 'com.jsoniter', name: 'jsoniter', version: '0.9.23'
+
     testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.24.2'
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: junitVersion
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: junitVersion
@@ -29,4 +36,55 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    jvmArgs += [
+            '--add-modules', 'jdk.incubator.vector',
+            '-Xmx2g'
+    ]
+}
+
+tasks.withType(JmhBytecodeGeneratorTask).configureEach {
+    jvmArgs.set(["--add-modules=jdk.incubator.vector"])
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add("--add-modules=jdk.incubator.vector")
+}
+
+compileTestJava {
+    options.compilerArgs += [
+            '--add-modules', 'jdk.incubator.vector'
+    ]
+}
+
+jmh {
+    fork = 1
+    warmupIterations = 3
+    iterations = 5
+    jvmArgsPrepend = [
+            '--add-modules=jdk.incubator.vector'
+    ]
+    if (getBooleanProperty('jmh.profilersEnabled', false)) {
+        if (OperatingSystem.current().isLinux()) {
+            profilers = [
+                    'perf',
+                    'perfasm:intelSyntax=true',
+                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getAsyncProfilerLibPath('LD_LIBRARY_PATH')
+            ]
+        } else if (OperatingSystem.current().isMacOsX()) {
+            profilers = [
+                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getAsyncProfilerLibPath('DYLD_LIBRARY_PATH')
+            ]
+        }
+    }
+    if (project.hasProperty('jmh.includes')) {
+        includes = [project.findProperty('jmh.includes')]
+    }
+}
+
+def getBooleanProperty(String name, boolean defaultValue) {
+    Boolean.valueOf((project.findProperty(name) ?: defaultValue) as String)
+}
+
+static def getAsyncProfilerLibPath(String envVarName) {
+    System.getenv(envVarName) ?: System.getProperty('java.library.path')
 }
