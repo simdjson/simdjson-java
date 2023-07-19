@@ -3,6 +3,7 @@ import org.gradle.internal.os.OperatingSystem
 
 plugins {
     id 'java'
+    id 'scala'
     id 'me.champeau.jmh' version '0.7.1'
 }
 
@@ -27,6 +28,8 @@ dependencies {
     jmhImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
     jmhImplementation group: 'com.alibaba.fastjson2', name: 'fastjson2', version: '2.0.35'
     jmhImplementation group: 'com.jsoniter', name: 'jsoniter', version: '0.9.23'
+    jmhImplementation group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-core_2.13', version: '2.23.2'
+    compileOnly group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-macros_2.13', version: '2.23.2'
 
     testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.24.2'
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: junitVersion
@@ -49,6 +52,10 @@ tasks.withType(JmhBytecodeGeneratorTask).configureEach {
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add("--add-modules=jdk.incubator.vector")
 }
+
+tasks.compileJmhScala.classpath = sourceSets.main.compileClasspath
+
+tasks.compileJmhJava.classpath += files(sourceSets.jmh.scala.classesDirectory)
 
 compileTestJava {
     options.compilerArgs += [
