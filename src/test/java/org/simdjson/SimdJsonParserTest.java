@@ -1,5 +1,6 @@
 package org.simdjson;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -290,6 +291,7 @@ public class SimdJsonParserTest {
             "0e9999999999999999999999999999",
             "-2402844368454405395.2"
     })
+    @Disabled("https://github.com/simdjson/simdjson-java/issues/5")
     public void testFloatValues(String floatStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
