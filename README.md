@@ -16,7 +16,7 @@ This implementation is still missing several features available in simdsjon. For
 ```java
 byte[] json = loadTwitterJson();
 
-SimdJsonParser parser = new SimdJsonParser();
+SimdJsonParser simdJsonParser = new SimdJsonParser();
 JsonValue jsonValue = simdJsonParser.parse(json, json.length);
 Iterator<JsonValue> tweets = jsonValue.get("statuses").arrayIterator();
 while (tweets.hasNext()) {

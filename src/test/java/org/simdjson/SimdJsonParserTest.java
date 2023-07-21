@@ -74,6 +74,33 @@ public class SimdJsonParserTest {
     }
 
     @Test
+    public void testArrayStream() {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toBytes("[1, 2, 3]");
+
+        // when
+        JsonValue jsonValue = parser.parse(json, json.length);
+
+        // then
+        assertThat(jsonValue.stream().count()).isEqualTo(3);
+    }
+
+
+    @Test
+    public void testArrayStreamByPropertyName() {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toBytes("{\"list\": [1, 2, 3]}");
+
+        // when
+        JsonValue jsonValue = parser.parse(json, json.length);
+
+        // then
+        assertThat(jsonValue.stream("list").count()).isEqualTo(3);
+    }
+
+    @Test
     public void testObjectIterator() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
