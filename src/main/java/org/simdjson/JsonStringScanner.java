@@ -15,24 +15,22 @@ class JsonStringScanner {
     private long prevEscaped = 0;
 
     JsonStringScanner() {
-        VectorSpecies<Byte> species = ByteVector.SPECIES_256;
+        VectorSpecies<Byte> species = ByteVector.SPECIES_512;
         this.backslashMask = ByteVector.broadcast(species, (byte) '\\');
         this.quoteMask = ByteVector.broadcast(species, (byte) '"');
     }
 
-    JsonStringBlock next(ByteVector chunk0, ByteVector chunk1) {
-        long backslash = eq(chunk0, chunk1, backslashMask);
+    JsonStringBlock next(ByteVector chunk) {
+        long backslash = eq(chunk, backslashMask);
         long escaped = findEscaped(backslash);
-        long quote = eq(chunk0, chunk1, quoteMask) & ~escaped;
+        long quote = eq(chunk, quoteMask) & ~escaped;
         long inString = prefixXor(quote) ^ prevInString;
         prevInString = inString >> 63;
         return new JsonStringBlock(quote, inString);
     }
 
-    private long eq(ByteVector chunk0, ByteVector chunk1, ByteVector mask) {
-        long rLo = chunk0.eq(mask).toLong();
-        long rHi = chunk1.eq(mask).toLong();
-        return rLo | (rHi << 32);
+    private long eq(ByteVector chunk, ByteVector mask) {
+        return chunk.eq(mask).toLong();
     }
 
     private long findEscaped(long backslash) {

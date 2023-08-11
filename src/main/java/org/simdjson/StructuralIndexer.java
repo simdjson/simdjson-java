@@ -2,7 +2,7 @@ package org.simdjson;
 
 import jdk.incubator.vector.ByteVector;
 
-import static jdk.incubator.vector.ByteVector.SPECIES_256;
+import static jdk.incubator.vector.ByteVector.SPECIES_512; 
 import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
 
 class StructuralIndexer {
@@ -22,17 +22,16 @@ class StructuralIndexer {
     }
 
     void step(byte[] buffer, int offset, int blockIndex) {
-        ByteVector chunk0 = ByteVector.fromArray(SPECIES_256, buffer, offset);
-        ByteVector chunk1 = ByteVector.fromArray(SPECIES_256, buffer, offset + 32);
+        ByteVector chunk = ByteVector.fromArray(SPECIES_512, buffer, offset);
 
-        JsonStringBlock strings = stringScanner.next(chunk0, chunk1);
-        JsonCharacterBlock characters = classifier.classify(chunk0, chunk1);
+        JsonStringBlock strings = stringScanner.next(chunk);
+        JsonCharacterBlock characters = classifier.classify(chunk);
 
         long scalar = characters.scalar();
         long nonQuoteScalar = scalar & ~strings.quote();
         long followsNonQuoteScalar = nonQuoteScalar << 1 | prevScalar;
         prevScalar = nonQuoteScalar >>> 63;
-        long unescaped = lteq(chunk0, chunk1, (byte) 0x1F);
+        long unescaped = lteq(chunk, (byte) 0x1F);
         // TODO: utf-8 validation
         long potentialScalarStart = scalar & ~followsNonQuoteScalar;
         long potentialStructuralStart = characters.op() | potentialScalarStart;
@@ -41,10 +40,8 @@ class StructuralIndexer {
         unescapedCharsError |= strings.nonQuoteInsideString(unescaped);
     }
 
-    private long lteq(ByteVector chunk0, ByteVector chunk1, byte scalar) {
-        long rLo = chunk0.compare(UNSIGNED_LE, scalar).toLong();
-        long rHi = chunk1.compare(UNSIGNED_LE, scalar).toLong();
-        return rLo | (rHi << 32);
+    private long lteq(ByteVector chunk, byte scalar) {
+        return chunk.compare(UNSIGNED_LE, scalar).toLong();
     }
 
     void finish(int blockIndex) {

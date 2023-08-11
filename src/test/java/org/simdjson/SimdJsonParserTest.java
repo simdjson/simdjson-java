@@ -39,7 +39,7 @@ public class SimdJsonParserTest {
         SimdJsonParser parser = new SimdJsonParser();
         byte[] json = toBytes("{}");
 
-        // when
+        // when 
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then

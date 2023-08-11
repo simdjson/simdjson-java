@@ -19,6 +19,11 @@ class StringUtils {
         return new String(padded, UTF_8);
     }
 
+
+    static ByteVector chunk(String str) {
+        return ByteVector.fromArray(ByteVector.SPECIES_512, str.getBytes(UTF_8), 0);
+    }
+
     static ByteVector chunk0(String str) {
         return ByteVector.fromArray(ByteVector.SPECIES_256, str.getBytes(UTF_8), 0);
     }

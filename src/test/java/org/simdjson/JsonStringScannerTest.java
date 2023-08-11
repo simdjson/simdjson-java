@@ -5,8 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.simdjson.StringUtils.chunk0;
-import static org.simdjson.StringUtils.chunk1;
+import static org.simdjson.StringUtils.chunk;
 import static org.simdjson.StringUtils.padWithSpaces;
 
 public class JsonStringScannerTest {
@@ -18,7 +17,7 @@ public class JsonStringScannerTest {
         String str = padWithSpaces("abc 123");
 
         // when
-        JsonStringBlock block = stringScanner.next(chunk0(str), chunk1(str));
+        JsonStringBlock block = stringScanner.next(chunk(str));
 
         // then
         assertThat(block.quote()).isEqualTo(0);
@@ -31,7 +30,7 @@ public class JsonStringScannerTest {
         String str = padWithSpaces("\"abc 123\"");
 
         // when
-        JsonStringBlock block = stringScanner.next(chunk0(str), chunk1(str));
+        JsonStringBlock block = stringScanner.next(chunk(str));
 
         // then
         assertThat(block.quote()).isEqualTo(0x101);
@@ -44,7 +43,7 @@ public class JsonStringScannerTest {
         String str = padWithSpaces("\"abc 123");
 
         // when
-        JsonStringBlock block = stringScanner.next(chunk0(str), chunk1(str));
+        JsonStringBlock block = stringScanner.next(chunk(str));
 
         // then
         assertThat(block.quote()).isEqualTo(0x1);
@@ -58,8 +57,8 @@ public class JsonStringScannerTest {
         String str1 = " c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 d0 d1 d2 d3 d4 d5 d6 d7 d8 d\" def";
 
         // when
-        JsonStringBlock firstBlock = stringScanner.next(chunk0(str0), chunk1(str0));
-        JsonStringBlock secondBlock = stringScanner.next(chunk0(str1), chunk1(str1));
+        JsonStringBlock firstBlock = stringScanner.next(chunk(str0));
+        JsonStringBlock secondBlock = stringScanner.next(chunk(str1));
 
         // then
         assertThat(firstBlock.quote()).isEqualTo(0x10);
@@ -77,7 +76,7 @@ public class JsonStringScannerTest {
         String padded = padWithSpaces(str);
 
         // when
-        JsonStringBlock block = stringScanner.next(chunk0(padded), chunk1(padded));
+        JsonStringBlock block = stringScanner.next(chunk(padded));
 
         // then
         assertThat(block.quote()).isEqualTo(0);
@@ -91,8 +90,8 @@ public class JsonStringScannerTest {
         String str1 = padWithSpaces("\"def");
 
         // when
-        JsonStringBlock firstBlock = stringScanner.next(chunk0(str0), chunk1(str0));
-        JsonStringBlock secondBlock = stringScanner.next(chunk0(str1), chunk1(str1));
+        JsonStringBlock firstBlock = stringScanner.next(chunk(str0));
+        JsonStringBlock secondBlock = stringScanner.next(chunk(str1));
 
         // then
         assertThat(firstBlock.quote()).isEqualTo(0);
@@ -110,7 +109,7 @@ public class JsonStringScannerTest {
         String padded = padWithSpaces(str);
 
         // when
-        JsonStringBlock block = stringScanner.next(chunk0(padded), chunk1(padded));
+        JsonStringBlock block = stringScanner.next(chunk(padded));
 
         // then
         assertThat(block.quote()).isEqualTo(0x1L << str.indexOf('"'));
@@ -124,8 +123,8 @@ public class JsonStringScannerTest {
         String str1 = padWithSpaces("\\\"abc");
 
         // when
-        JsonStringBlock firstBlock = stringScanner.next(chunk0(str0), chunk1(str0));
-        JsonStringBlock secondBlock = stringScanner.next(chunk0(str1), chunk1(str1));
+        JsonStringBlock firstBlock = stringScanner.next(chunk(str0));
+        JsonStringBlock secondBlock = stringScanner.next(chunk(str1));
 
         // then
         assertThat(firstBlock.quote()).isEqualTo(0);
