@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 
 class Utf8ValidatorTest {
     private static final VectorSpecies<Byte> VECTOR_SPECIES = ByteVector.SPECIES_256;
@@ -21,7 +21,7 @@ class Utf8ValidatorTest {
         byte[] bytes = new byte[]{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p', 'q'};
         VectorMask<Byte> nonZeroBytes = VECTOR_SPECIES.indexInRange(0, bytes.length);
 
-        assertTrue(Utf8Validator.isAscii(ByteVector.fromArray(VECTOR_SPECIES, bytes, 0, nonZeroBytes)));
+        assertThat(Utf8Validator.isAscii(ByteVector.fromArray(VECTOR_SPECIES, bytes, 0, nonZeroBytes))).isTrue();
     }
 
     @Test
@@ -29,7 +29,7 @@ class Utf8ValidatorTest {
         byte[] bytes = new byte[]{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p', (byte) 0b1_0000000};
         VectorMask<Byte> nonZeroBytes = VECTOR_SPECIES.indexInRange(0, bytes.length);
 
-        assertFalse(Utf8Validator.isAscii(ByteVector.fromArray(VECTOR_SPECIES, bytes, 0, nonZeroBytes)));
+        assertThat(Utf8Validator.isAscii(ByteVector.fromArray(VECTOR_SPECIES, bytes, 0, nonZeroBytes))).isFalse();
     }
 
     /* ASCII / 1 BYTE TESTS */
@@ -41,7 +41,7 @@ class Utf8ValidatorTest {
             allValidAscii[i] = (byte) i;
         }
 
-        assertDoesNotThrow(() -> Utf8Validator.validate(allValidAscii));
+        assertThatCode(() -> Utf8Validator.validate(allValidAscii)).doesNotThrowAnyException();
     }
 
     @Test
@@ -53,9 +53,13 @@ class Utf8ValidatorTest {
             invalidAscii[index++] = (byte) eightBitVal;
         }
 
+        SimdJsonParser parser = new SimdJsonParser();
         for (int i = 0; i < 128; i += VECTOR_SPECIES.vectorByteSize()) {
             byte[] vectorChunk = Arrays.copyOfRange(invalidAscii, i, i + VECTOR_SPECIES.vectorByteSize());
-            assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(vectorChunk));
+
+            assertThatExceptionOfType(JsonParsingException.class)
+                    .isThrownBy(() -> parser.parse(vectorChunk, vectorChunk.length))
+                    .withMessage("Invalid UTF8");
         }
     }
 
@@ -76,10 +80,13 @@ class Utf8ValidatorTest {
             continuationByte++;
         }
 
-
+        SimdJsonParser parser = new SimdJsonParser();
         for (int i = 0; i < inputBytes.length; i += VECTOR_SPECIES.length()) {
             byte[] vectorChunk = Arrays.copyOfRange(inputBytes, i, i + VECTOR_SPECIES.vectorByteSize());
-            assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(vectorChunk));
+
+            assertThatExceptionOfType(JsonParsingException.class)
+                    .isThrownBy(() -> parser.parse(vectorChunk, vectorChunk.length))
+                    .withMessage("Invalid UTF8");
         }
     }
 
@@ -90,7 +97,10 @@ class Utf8ValidatorTest {
         inputBytes[1] = (byte) 0b10_000000;
         inputBytes[2] = (byte) 0b10_000000; // two byte lead should only have one continuation byte
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -98,7 +108,10 @@ class Utf8ValidatorTest {
         byte[] inputBytes = new byte[1];
         inputBytes[0] = (byte) 0b110_00010;
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -109,7 +122,10 @@ class Utf8ValidatorTest {
         inputBytes[2] = (byte) 0b10_000000;
         inputBytes[3] = (byte) 0b10_000000; // three byte lead should only have two continuation bytes
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -118,7 +134,10 @@ class Utf8ValidatorTest {
         inputBytes[0] = (byte) 0b1110_0000;
         inputBytes[1] = (byte) 0b10_100000;
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -126,7 +145,10 @@ class Utf8ValidatorTest {
         byte[] inputBytes = new byte[1];
         inputBytes[0] = (byte) 0b1110_0000;
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -138,7 +160,10 @@ class Utf8ValidatorTest {
         inputBytes[3] = (byte) 0b10_000000;
         inputBytes[4] = (byte) 0b10_000000; // four byte lead should only have three continuation bytes
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -148,7 +173,10 @@ class Utf8ValidatorTest {
         inputBytes[1] = (byte) 0b10_010000;
         inputBytes[2] = (byte) 0b10_000000;
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -157,7 +185,10 @@ class Utf8ValidatorTest {
         inputBytes[0] = (byte) 0b11110_000;
         inputBytes[1] = (byte) 0b10_010000;
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -165,7 +196,10 @@ class Utf8ValidatorTest {
         byte[] inputBytes = new byte[1];
         inputBytes[0] = (byte) 0b11110_000;
 
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
 
@@ -200,7 +234,7 @@ class Utf8ValidatorTest {
             }
         }
 
-        assertDoesNotThrow(() -> Utf8Validator.validate(inputBytes));
+        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
     }
 
     @Test
@@ -228,9 +262,13 @@ class Utf8ValidatorTest {
             }
         }
 
+        SimdJsonParser parser = new SimdJsonParser();
         for (int i = 0; i < inputBytes.length; i += VECTOR_SPECIES.length()) {
             byte[] vectorChunk = Arrays.copyOfRange(inputBytes, i, i + VECTOR_SPECIES.vectorByteSize());
-            assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(vectorChunk));
+
+            assertThatExceptionOfType(JsonParsingException.class)
+                    .isThrownBy(() -> parser.parse(vectorChunk, vectorChunk.length))
+                    .withMessage("Invalid UTF8");
         }
     }
 
@@ -265,9 +303,13 @@ class Utf8ValidatorTest {
             }
         }
 
+        SimdJsonParser parser = new SimdJsonParser();
         for (int i = 0; i < inputBytes.length; i += VECTOR_SPECIES.length()) {
             byte[] vectorChunk = Arrays.copyOfRange(inputBytes, i, i + VECTOR_SPECIES.vectorByteSize());
-            assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(vectorChunk));
+
+            assertThatExceptionOfType(JsonParsingException.class)
+                    .isThrownBy(() -> parser.parse(vectorChunk, vectorChunk.length))
+                    .withMessage("Invalid UTF8");
         }
     }
 
@@ -312,7 +354,7 @@ class Utf8ValidatorTest {
             }
         }
 
-        assertDoesNotThrow(() -> Utf8Validator.validate(inputBytes));
+        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
     }
 
     /* code points in the range of U+D800 - U+DFFF (inclusive) are the surrogates for UTF-16.
@@ -345,9 +387,13 @@ class Utf8ValidatorTest {
             }
         }
 
+        SimdJsonParser parser = new SimdJsonParser();
         for (int i = 0; i < inputBytes.length; i += VECTOR_SPECIES.vectorByteSize()) {
             byte[] vectorChunk = Arrays.copyOfRange(inputBytes, i, i + VECTOR_SPECIES.vectorByteSize());
-            assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(vectorChunk));
+
+            assertThatExceptionOfType(JsonParsingException.class)
+                    .isThrownBy(() -> parser.parse(vectorChunk, vectorChunk.length))
+                    .withMessage("Invalid UTF8");
         }
     }
 
@@ -387,7 +433,7 @@ class Utf8ValidatorTest {
             }
         }
 
-        assertDoesNotThrow(() -> Utf8Validator.validate(inputBytes));
+        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
     }
 
 
@@ -439,7 +485,7 @@ class Utf8ValidatorTest {
             }
         }
 
-        assertDoesNotThrow(() -> Utf8Validator.validate(inputBytes));
+        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
     }
 
     /* Overlong Test, the decoded character must be above U+FFFF / 11110_000 10_001111 10_111111 10_111111 */
@@ -476,10 +522,13 @@ class Utf8ValidatorTest {
             }
         }
 
-
+        SimdJsonParser parser = new SimdJsonParser();
         for (int i = 0; i < inputBytes.length; i += VECTOR_SPECIES.vectorByteSize()) {
             byte[] vectorChunk = Arrays.copyOfRange(inputBytes, i, i + VECTOR_SPECIES.vectorByteSize());
-            assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(vectorChunk));
+
+            assertThatExceptionOfType(JsonParsingException.class)
+                    .isThrownBy(() -> parser.parse(vectorChunk, vectorChunk.length))
+                    .withMessage("Invalid UTF8");
         }
     }
 
@@ -527,10 +576,13 @@ class Utf8ValidatorTest {
             }
         }
 
-
+        SimdJsonParser parser = new SimdJsonParser();
         for (int i = 0; i < inputBytes.length; i += VECTOR_SPECIES.vectorByteSize()) {
             byte[] vectorChunk = Arrays.copyOfRange(inputBytes, i, i + VECTOR_SPECIES.vectorByteSize());
-            assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(vectorChunk));
+
+            assertThatExceptionOfType(JsonParsingException.class)
+                    .isThrownBy(() -> parser.parse(vectorChunk, vectorChunk.length))
+                    .withMessage("Invalid UTF8");
         }
     }
 
@@ -545,7 +597,7 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 1] = (byte) 0b110_00010;
 
         ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        Utf8Validator.isIncomplete(utf8Vector);
+        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
     }
 
     @Test
@@ -556,7 +608,7 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 1] = (byte) 0b10_100000;
 
         ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertNotEquals(0L, Utf8Validator.isIncomplete(utf8Vector));
+        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
     }
 
     @Test
@@ -566,7 +618,7 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 1] = (byte) 0b1110_0000;
 
         ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertNotEquals(0L, Utf8Validator.isIncomplete(utf8Vector));
+        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
     }
 
     @Test
@@ -579,7 +631,7 @@ class Utf8ValidatorTest {
 
 
         ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertNotEquals(0L, Utf8Validator.isIncomplete(utf8Vector));
+        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
     }
 
     @Test
@@ -590,7 +642,7 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 1] = (byte) 0b10_010000;
 
         ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertNotEquals(0L, Utf8Validator.isIncomplete(utf8Vector));
+        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
     }
 
     @Test
@@ -600,7 +652,7 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 1] = (byte) 0b11110_000;
 
         ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertNotEquals(0L, Utf8Validator.isIncomplete(utf8Vector));
+        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
     }
 
 
@@ -610,12 +662,15 @@ class Utf8ValidatorTest {
     @ValueSource(strings = {"/twitter.json", "/nhkworld.json", "/greek.txt", "/emoji-test.txt", "/amazon_cellphones.ndjson"})
     void validate_utf8InputFiles_valid(String inputFilePath) throws IOException {
         byte[] inputBytes = Objects.requireNonNull(Utf8ValidatorTest.class.getResourceAsStream(inputFilePath)).readAllBytes();
-        assertDoesNotThrow(() -> Utf8Validator.validate(inputBytes));
+        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
     }
 
     @Test
     void validate_utf8InputFile_invalid() throws IOException {
         byte[] inputBytes = Objects.requireNonNull(Utf8ValidatorTest.class.getResourceAsStream("/malformed.txt")).readAllBytes();
-        assertThrowsExactly(JsonParsingException.class, () -> Utf8Validator.validate(inputBytes));
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 }
