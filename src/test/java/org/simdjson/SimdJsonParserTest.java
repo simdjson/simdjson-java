@@ -1,6 +1,5 @@
 package org.simdjson;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -12,6 +11,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.simdjson.StringUtils.toUtf8;
 
 public class SimdJsonParserTest {
 
@@ -19,7 +19,7 @@ public class SimdJsonParserTest {
     public void testEmptyArray() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[]");
+        byte[] json = toUtf8("[]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -37,7 +37,7 @@ public class SimdJsonParserTest {
     public void testEmptyObject() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("{}");
+        byte[] json = toUtf8("{}");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -55,7 +55,7 @@ public class SimdJsonParserTest {
     public void testArrayIterator() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[1, 2, 3]");
+        byte[] json = toUtf8("[1, 2, 3]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -78,7 +78,7 @@ public class SimdJsonParserTest {
     public void testObjectIterator() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("{\"a\": 1, \"b\": 2, \"c\": 3}");
+        byte[] json = toUtf8("{\"a\": 1, \"b\": 2, \"c\": 3}");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -103,7 +103,7 @@ public class SimdJsonParserTest {
     public void testBooleanValues() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[true, false]");
+        byte[] json = toUtf8("[true, false]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -122,7 +122,7 @@ public class SimdJsonParserTest {
     public void testBooleanValuesAsRoot(boolean booleanVal) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(Boolean.toString(booleanVal));
+        byte[] json = toUtf8(Boolean.toString(booleanVal));
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -135,7 +135,7 @@ public class SimdJsonParserTest {
     public void testNullValue() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[null]");
+        byte[] json = toUtf8("[null]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -153,7 +153,7 @@ public class SimdJsonParserTest {
     public void testNullValueAsRoot() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("null");
+        byte[] json = toUtf8("null");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -166,7 +166,7 @@ public class SimdJsonParserTest {
     public void testStringValues() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[\"abc\", \"ab\\\\c\"]");
+        byte[] json = toUtf8("[\"abc\", \"ab\\\\c\"]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -185,7 +185,7 @@ public class SimdJsonParserTest {
     public void testStringValuesAsRoot(String jsonStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("\"" + jsonStr + "\"");
+        byte[] json = toUtf8("\"" + jsonStr + "\"");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -195,10 +195,10 @@ public class SimdJsonParserTest {
     }
 
     @Test
-    public void testLongValues() {
+    public void testNumericValues() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[0, 1, -1]");
+        byte[] json = toUtf8("[0, 1, -1, 1.1]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -210,58 +210,36 @@ public class SimdJsonParserTest {
         assertLong(it.next(), 0);
         assertLong(it.next(), 1);
         assertLong(it.next(), -1);
+        assertDouble(it.next(), "1.1");
         assertThat(it.hasNext()).isFalse();
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1, -1})
-    public void testLongValuesAsRoot(int intVal) {
+    @ValueSource(strings = {"0", "1", "-1"})
+    public void testLongValuesAsRoot(String longStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(String.valueOf(intVal));
+        byte[] json = toUtf8(longStr);
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertLong(jsonValue, intVal);
+        assertLong(jsonValue, Long.parseLong(longStr));
     }
 
     @ParameterizedTest
-    @ValueSource(longs = {Long.MAX_VALUE, Long.MIN_VALUE})
-    public void testMinMaxLongValue(long longVal) {
+    @ValueSource(strings = {"1.1", "-1.1", "1e1", "1E1", "-1e1", "-1E1", "1e-1", "1E-1", "1.1e1", "1.1E1"})
+    public void testDoubleValuesAsRoot(String doubleStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(String.valueOf(longVal));
+        byte[] json = toUtf8(doubleStr);
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertLong(jsonValue, longVal);
-    }
-
-    @Test
-    public void testOutOfRangeLongValues() {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[9223372036854775808, 99223372036854775808, -9223372036854775809, -99223372036854775809]");
-
-        // when
-        JsonValue jsonValue = parser.parse(json, json.length);
-
-        // then
-        assertThat(jsonValue.isArray()).isTrue();
-        Iterator<JsonValue> it = jsonValue.arrayIterator();
-        assertThat(it.hasNext()).isTrue();
-        // Not sure if this is how out-of-ranges should be handled.
-        // The JSON specification doesn't say much about it: https://datatracker.ietf.org/doc/html/rfc8259#section-6.
-        // Jackson handles them in the same way.
-        assertLong(it.next(), -9223372036854775808L);
-        assertLong(it.next(), 6989651668307017728L);
-        assertLong(it.next(), 9223372036854775807L);
-        assertLong(it.next(), -6989651668307017729L);
-        assertThat(it.hasNext()).isFalse();
+        assertDouble(jsonValue, doubleStr);
     }
 
     @ParameterizedTest
@@ -269,7 +247,7 @@ public class SimdJsonParserTest {
     public void testInvalidPrimitivesAsRoot(String jsonStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(jsonStr);
+        byte[] json = toUtf8(jsonStr);
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
@@ -280,37 +258,11 @@ public class SimdJsonParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "1.1",
-            "9355950000000000000.00000000000000000000000000000000001844674407370955161600000184467440737095516161844674407370955161407370955161618446744073709551616000184467440737095516166000001844674407370955161618446744073709551614073709551616184467440737095516160001844674407370955161601844674407370955674451616184467440737095516140737095516161844674407370955161600018446744073709551616018446744073709551611616000184467440737095001844674407370955161600184467440737095516160018446744073709551168164467440737095516160001844073709551616018446744073709551616184467440737095516160001844674407536910751601611616000184467440737095001844674407370955161600184467440737095516160018446744073709551616184467440737095516160001844955161618446744073709551616000184467440753691075160018446744073709",
-            "2.2250738585072013e-308",
-            "-92666518056446206563E3",
-            "-42823146028335318693e-128",
-            "90054602635948575728E72",
-            "1.00000000000000188558920870223463870174566020691753515394643550663070558368373221972569761144603605635692374830246134201063722058e-309",
-            "0e9999999999999999999999999999",
-            "-2402844368454405395.2"
-    })
-    @Disabled("https://github.com/simdjson/simdjson-java/issues/5")
-    public void testFloatValues(String floatStr) {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(floatStr);
-
-        // when
-        JsonValue jsonValue = parser.parse(json, json.length);
-
-        // then
-        assertThat(jsonValue.isDouble()).isTrue();
-        assertThat(jsonValue.asDouble()).isEqualTo(Double.valueOf(floatStr));
-    }
-
-    @ParameterizedTest
     @ValueSource(strings = {"[n]", "{\"a\":n}"})
     public void testInvalidNull(String jsonStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(jsonStr);
+        byte[] json = toUtf8(jsonStr);
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
@@ -324,7 +276,7 @@ public class SimdJsonParserTest {
     public void testInvalidFalse(String jsonStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(jsonStr);
+        byte[] json = toUtf8(jsonStr);
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
@@ -338,7 +290,7 @@ public class SimdJsonParserTest {
     public void testInvalidTrue(String jsonStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(jsonStr);
+        byte[] json = toUtf8(jsonStr);
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
@@ -347,25 +299,11 @@ public class SimdJsonParserTest {
         assertThat(ex.getMessage()).isEqualTo("Invalid value starting at " + jsonStr.indexOf('t') + ". Expected 'true'.");
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"[-]", "{\"a\":-}"})
-    public void testInvalidNegativeNumber(String jsonStr) {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes(jsonStr);
-
-        // when
-        JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
-
-        // then
-        assertThat(ex.getMessage()).isEqualTo("Invalid number starting at " + jsonStr.indexOf('-'));
-    }
-
     @Test
     public void testUnicodeString() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[\"\\u005C\"]");
+        byte[] json = toUtf8("[\"\\u005C\"]");
 
         // when
         UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class, () -> parser.parse(json, json.length));
@@ -379,7 +317,7 @@ public class SimdJsonParserTest {
     public void testInvalidEscape(String jsonStr) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[\"" + jsonStr + "\"]");
+        byte[] json = toUtf8("[\"" + jsonStr + "\"]");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
@@ -392,7 +330,7 @@ public class SimdJsonParserTest {
     public void testLongString() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]");
+        byte[] json = toUtf8("[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -409,7 +347,7 @@ public class SimdJsonParserTest {
     public void testArraySize() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("[1, 2, 3]");
+        byte[] json = toUtf8("[1, 2, 3]");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -423,7 +361,7 @@ public class SimdJsonParserTest {
     public void testObjectSize() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toBytes("{\"1\":1,\"2\":1,\"3\":1}");
+        byte[] json = toUtf8("{\"1\":1,\"2\":1,\"3\":1}");
 
         // when
         JsonValue jsonValue = parser.parse(json, json.length);
@@ -480,7 +418,8 @@ public class SimdJsonParserTest {
         assertThat(actual.asLong()).isEqualTo(expected);
     }
 
-    private static byte[] toBytes(String str) {
-        return str.getBytes(UTF_8);
+    private static void assertDouble(JsonValue actual, String str) {
+        assertThat(actual.isDouble()).isTrue();
+        assertThat(actual.asDouble()).isEqualTo(Double.valueOf(str));
     }
 }
