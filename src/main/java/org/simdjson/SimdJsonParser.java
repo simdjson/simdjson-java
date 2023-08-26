@@ -48,7 +48,7 @@ public class SimdJsonParser {
         jsonIterator.reset();
     }
 
-    protected void stage0(byte[] buffer) {
+    private void stage0(byte[] buffer) {
         Utf8Validator.validate(buffer);
     }
 

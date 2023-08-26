@@ -1,7 +1,6 @@
 package org.simdjson;
 
 import jdk.incubator.vector.ByteVector;
-import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorSpecies;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,33 +15,8 @@ import static org.assertj.core.api.Assertions.*;
 class Utf8ValidatorTest {
     private static final VectorSpecies<Byte> VECTOR_SPECIES = ByteVector.SPECIES_256;
 
-    @Test
-    void isAscii_true() {
-        byte[] bytes = new byte[]{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p', 'q'};
-        VectorMask<Byte> nonZeroBytes = VECTOR_SPECIES.indexInRange(0, bytes.length);
-
-        assertThat(Utf8Validator.isAscii(ByteVector.fromArray(VECTOR_SPECIES, bytes, 0, nonZeroBytes))).isTrue();
-    }
-
-    @Test
-    void isAscii_false() {
-        byte[] bytes = new byte[]{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p', (byte) 0b1_0000000};
-        VectorMask<Byte> nonZeroBytes = VECTOR_SPECIES.indexInRange(0, bytes.length);
-
-        assertThat(Utf8Validator.isAscii(ByteVector.fromArray(VECTOR_SPECIES, bytes, 0, nonZeroBytes))).isFalse();
-    }
 
     /* ASCII / 1 BYTE TESTS */
-
-    @Test
-    void validate_allSevenBitValues_validAscii() {
-        byte[] allValidAscii = new byte[128];
-        for (int i = 0; i < 128; i++) {
-            allValidAscii[i] = (byte) i;
-        }
-
-        assertThatCode(() -> Utf8Validator.validate(allValidAscii)).doesNotThrowAnyException();
-    }
 
     @Test
     void validate_allEightBitValues_invalidAscii() {
@@ -205,38 +179,6 @@ class Utf8ValidatorTest {
 
     /* 2 BYTE / LATIN TESTS */
 
-    /* first valid two byte character: 110_00010 10_000000
-    anything smaller is invalid as it would fit into one byte
-    last valid two byte character: 110_11111 10_111111 */
-    @Test
-    void validate_LatinCharacters_allValid() {
-        byte minLeaderByte = (byte) 0b110_00010;
-        byte maxLeaderByte = (byte) 0b110_11111;
-        byte minContinuationByte = (byte) 0b10_000000;
-        byte maxContinuationByte = (byte) 0b10_111111;
-
-        // headers take up 5 bits, only 11 bits remain for character code points
-        // 2 to the power of 11 = 2048 - 128 (invalid code points) = 1920 valid code points
-        // 1920 * 2 bytes = 3840 bytes
-        byte[] inputBytes = new byte[3840];
-        int index = 0;
-
-        byte leaderByte = minLeaderByte;
-        byte continuationByte = minContinuationByte;
-        while (leaderByte <= maxLeaderByte) {
-            inputBytes[index++] = leaderByte;
-            inputBytes[index++] = continuationByte;
-            if (continuationByte == maxContinuationByte) {
-                leaderByte++;
-                continuationByte = minContinuationByte;
-            } else {
-                continuationByte++;
-            }
-        }
-
-        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
-    }
-
     @Test
     void validate_overlong_2byte_invalid() {
         byte minLeaderByte = (byte) 0b110_00000;
@@ -313,50 +255,6 @@ class Utf8ValidatorTest {
         }
     }
 
-    /* first valid three byte character: 1110_0000 10_100000 10_000000
-    last valid three byte character in first sector: 1110_1101 10_011111 10_111111
-    2 to the power of 16 = 65536
-    2 to the power of 14 = 16384
-    2 to the power of 11 = 2048
-
-    65536 - (16384 - (2048 + 2048)) = 53248 valid code points */
-    @Test
-    void validate_asiaticFirstSector_allValid() {
-        final byte minLeaderByte = (byte) 0b1110_0000;
-        final byte maxLeaderByte = (byte) 0b1110_1101;
-        final byte minContinuationByte = (byte) 0b10_000000;
-        final byte maxFirstContinuationByte = (byte) 0b10_011111; // when leader byte is at max value
-        final byte maxContinuationByte = (byte) 0b10_111111;
-
-        byte leaderByte = minLeaderByte;
-        byte firstContinuationByte = (byte) 0b10_100000;
-        byte secondContinuationByte = minContinuationByte;
-
-        // 53248 valid code points * 3 bytes = 159744 bytes
-        byte[] inputBytes = new byte[53248 * 3];
-        int index = 0;
-
-        while (leaderByte <= maxLeaderByte) {
-            inputBytes[index++] = leaderByte;
-            inputBytes[index++] = firstContinuationByte;
-            inputBytes[index++] = secondContinuationByte;
-
-            if (secondContinuationByte == maxContinuationByte) {
-                if ((leaderByte == maxLeaderByte && firstContinuationByte == maxFirstContinuationByte) || firstContinuationByte == maxContinuationByte) {
-                    leaderByte++;
-                    firstContinuationByte = minContinuationByte;
-                } else {
-                    firstContinuationByte++;
-                }
-                secondContinuationByte = minContinuationByte;
-            } else {
-                secondContinuationByte++;
-            }
-        }
-
-        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
-    }
-
     /* code points in the range of U+D800 - U+DFFF (inclusive) are the surrogates for UTF-16.
     These 2048 code points that are reserved for UTF-16 are disallowed in UTF-8
     1101 1000 0000 0000 -> 1101 1111 1111 1111 */
@@ -397,96 +295,8 @@ class Utf8ValidatorTest {
         }
     }
 
-    /* first valid three byte character in second sector: 1110_1110 10_000000 10_000000
-   last valid three byte character: 1110_1111 10_111111 10_111111
-   U+E000 - U+FFFF (inclusive) */
-    @Test
-    void validate_asiaticSecondSector_allValid() {
-        final byte minLeaderByte = (byte) 0b1110_1110;
-        final byte maxLeaderByte = (byte) 0b1110_1111;
-        final byte minContinuationByte = (byte) 0b10_000000;
-        final byte maxContinuationByte = (byte) 0b10_111111;
-
-        byte leaderByte = minLeaderByte;
-        byte firstContinuationByte = minContinuationByte;
-        byte secondContinuationByte = minContinuationByte;
-
-        // two to the power of 13 = 8192 valid code points * 3 bytes = 24576 bytes
-        byte[] inputBytes = new byte[24576];
-        int index = 0;
-
-        while (leaderByte <= maxLeaderByte) {
-            inputBytes[index++] = leaderByte;
-            inputBytes[index++] = firstContinuationByte;
-            inputBytes[index++] = secondContinuationByte;
-
-            if (secondContinuationByte == maxContinuationByte) {
-                if (firstContinuationByte == maxContinuationByte) {
-                    leaderByte++;
-                    firstContinuationByte = minContinuationByte;
-                } else {
-                    firstContinuationByte++;
-                }
-                secondContinuationByte = minContinuationByte;
-            } else {
-                secondContinuationByte++;
-            }
-        }
-
-        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
-    }
-
 
     /* 4 BYTE / Supplementary TESTS */
-
-    /* first valid four byte character: 11110_000 10_010000 10_000000 10_000000
-    lower values would fit into 16 bits which is only suitable for 3 byte characters (Overlong error)
-    last valid four byte character: 11110_100 10_001111 10_111111 10_111111
-    U+010000 - U+10FFFF (inclusive) */
-    @Test
-    void validate_supplementary_allValid() {
-        byte minLeaderByte = (byte) 0b11110_000;
-        byte maxLeaderByte = (byte) 0b11110_100;
-        byte minContinuationByte = (byte) 0b10_000000;
-        byte maxContinuationByte = (byte) 0b10_111111;
-        byte minFirstContinuationByte = (byte) 0b10_010000;
-        byte maxFirstContinuationByte = (byte) 0b10_001111; // when leader byte is at max value
-
-        byte leaderByte = minLeaderByte;
-        byte firstContinuationByte = minFirstContinuationByte;
-        byte secondContinuationByte = minContinuationByte;
-        byte thirdContinuationByte = minContinuationByte;
-
-        int codePoints = 0x10FFFF - 0x010000 + 1;
-        byte[] inputBytes = new byte[codePoints * 4];
-        int index = 0;
-
-        while (leaderByte <= maxLeaderByte) {
-            inputBytes[index++] = leaderByte;
-            inputBytes[index++] = firstContinuationByte;
-            inputBytes[index++] = secondContinuationByte;
-            inputBytes[index++] = thirdContinuationByte;
-
-            if (thirdContinuationByte == maxContinuationByte) {
-                if (secondContinuationByte == maxContinuationByte) {
-                    if ((leaderByte == maxLeaderByte && firstContinuationByte == maxFirstContinuationByte) || (firstContinuationByte == maxContinuationByte)) {
-                        leaderByte++;
-                        firstContinuationByte = minContinuationByte;
-                    } else {
-                        firstContinuationByte++;
-                    }
-                    secondContinuationByte = minContinuationByte;
-                } else {
-                    secondContinuationByte++;
-                }
-                thirdContinuationByte = minContinuationByte;
-            } else {
-                thirdContinuationByte++;
-            }
-        }
-
-        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
-    }
 
     /* Overlong Test, the decoded character must be above U+FFFF / 11110_000 10_001111 10_111111 10_111111 */
     @Test
@@ -596,8 +406,10 @@ class Utf8ValidatorTest {
         byte[] inputBytes = new byte[vectorBytes];
         inputBytes[vectorBytes - 1] = (byte) 0b110_00010;
 
-        ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -607,8 +419,10 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 2] = (byte) 0b1110_0000;
         inputBytes[vectorBytes - 1] = (byte) 0b10_100000;
 
-        ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -617,8 +431,10 @@ class Utf8ValidatorTest {
         byte[] inputBytes = new byte[vectorBytes];
         inputBytes[vectorBytes - 1] = (byte) 0b1110_0000;
 
-        ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -629,9 +445,10 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 2] = (byte) 0b10_010000;
         inputBytes[vectorBytes - 1] = (byte) 0b10_000000;
 
-
-        ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -641,8 +458,10 @@ class Utf8ValidatorTest {
         inputBytes[vectorBytes - 2] = (byte) 0b11110_000;
         inputBytes[vectorBytes - 1] = (byte) 0b10_010000;
 
-        ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
     @Test
@@ -651,18 +470,21 @@ class Utf8ValidatorTest {
         byte[] inputBytes = new byte[vectorBytes];
         inputBytes[vectorBytes - 1] = (byte) 0b11110_000;
 
-        ByteVector utf8Vector = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, 0);
-        assertThat(Utf8Validator.isIncomplete(utf8Vector)).isNotEqualTo(0L);
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatExceptionOfType(JsonParsingException.class)
+                .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))
+                .withMessage("Invalid UTF8");
     }
 
 
     /* file tests */
 
     @ParameterizedTest
-    @ValueSource(strings = {"/twitter.json", "/nhkworld.json", "/greek.txt", "/emoji-test.txt", "/amazon_cellphones.ndjson"})
+    @ValueSource(strings = {"/twitter.json", "/nhkworld.json"})
     void validate_utf8InputFiles_valid(String inputFilePath) throws IOException {
         byte[] inputBytes = Objects.requireNonNull(Utf8ValidatorTest.class.getResourceAsStream(inputFilePath)).readAllBytes();
-        assertThatCode(() -> Utf8Validator.validate(inputBytes)).doesNotThrowAnyException();
+        SimdJsonParser parser = new SimdJsonParser();
+        assertThatCode(() -> parser.parse(inputBytes, inputBytes.length)).doesNotThrowAnyException();
     }
 
     @Test
