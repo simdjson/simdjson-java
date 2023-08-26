@@ -7,6 +7,11 @@ import java.util.Arrays;
 public class Utf8Validator {
     private static final VectorSpecies<Byte> VECTOR_SPECIES = ByteVector.SPECIES_256;
     private static final ByteVector INCOMPLETE_CHECK = getIncompleteCheck();
+    private static final VectorShuffle<Integer> SHIFT_FOUR_BYTES_FORWARD = VectorShuffle.iota(IntVector.SPECIES_256,
+            IntVector.SPECIES_256.elementSize() - 1, 1, true);
+    private static final ByteVector LOW_NIBBLE_MASK = ByteVector.broadcast(VECTOR_SPECIES, 0b0000_1111);
+    private static final ByteVector ALL_ASCII_MASK = ByteVector.broadcast(VECTOR_SPECIES, (byte) 0b1000_0000);
+
 
     /**
      * Validate the input bytes are valid UTF8
@@ -63,9 +68,8 @@ public class Utf8Validator {
     The previous three bytes are required for validation, pulling in the last integer will give the previous four bytes.
     The switch to integer vectors is to allow for integer shifting instead of the more expensive shuffle / slice operations */
     private static IntVector fourBytesPreviousSlice(ByteVector vectorChunk, int previousFourUtf8Bytes) {
-        VectorShuffle<Integer> shiftFourBytesForward = VectorShuffle.iota(IntVector.SPECIES_256, IntVector.SPECIES_256.elementSize() - 1, 1, true);
         return vectorChunk.reinterpretAsInts()
-                .rearrange(shiftFourBytesForward)
+                .rearrange(SHIFT_FOUR_BYTES_FORWARD)
                 .withLane(0, previousFourUtf8Bytes);
     }
 
@@ -81,17 +85,16 @@ public class Utf8Validator {
         // shift the current input forward by 1 byte to include 1 byte from the previous input
         var oneBytePrevious = previousVectorSlice(utf8Vector, fourBytesPrevious, 1);
 
-        ByteVector lowNibbleMask = ByteVector.broadcast(VECTOR_SPECIES, 0b0000_1111);
         // high nibbles of the current input (e.g. 0xC3 >> 4 = 0xC)
         ByteVector byte2HighNibbles = utf8Vector.lanewise(VectorOperators.LSHR, 4)
-                .reinterpretAsBytes().and(lowNibbleMask);
+                .reinterpretAsBytes().and(LOW_NIBBLE_MASK);
 
         // high nibbles of the shifted input
         ByteVector byte1HighNibbles = oneBytePrevious.reinterpretAsInts().lanewise(VectorOperators.LSHR, 4)
-                .reinterpretAsBytes().and(lowNibbleMask);
+                .reinterpretAsBytes().and(LOW_NIBBLE_MASK);
 
         // low nibbles of the shifted input (e.g. 0xC3 & 0xF = 0x3)
-        ByteVector byte1LowNibbles = oneBytePrevious.and(lowNibbleMask);
+        ByteVector byte1LowNibbles = oneBytePrevious.and(LOW_NIBBLE_MASK);
 
         ByteVector byte1HighState = byte2HighNibbles.selectFrom(LookupTable.byte2High);
         ByteVector byte1LowState = byte1HighNibbles.selectFrom(LookupTable.byte1High);
@@ -134,7 +137,6 @@ public class Utf8Validator {
 
     // ASCII will never exceed 01111_1111
     protected static boolean isAscii(ByteVector utf8Vector) {
-        ByteVector ALL_ASCII_MASK = ByteVector.broadcast(VECTOR_SPECIES, (byte) 0b1000_0000);
         return utf8Vector.and(ALL_ASCII_MASK).compare(VectorOperators.EQ, 0).allTrue();
     }
 
