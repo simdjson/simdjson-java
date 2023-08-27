@@ -21,8 +21,7 @@ class TapeBuilder {
     private static final byte SPACE = 0x20;
     private static final byte BACKSLASH = '\\';
     private static final byte QUOTE = '"';
-    // private static final int BYTES_PROCESSED = 32;
-    private static final int BYTES_PROCESSED = 64;
+    private static final int BYTES_PROCESSED = ByteVector.SPECIES_PREFERRED.vectorByteSize();
     private static final byte[] ESCAPE_MAP = new byte[]{
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x0.
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -199,7 +198,7 @@ class TapeBuilder {
         int src = idx + 1;
         int dst = stringBufferIdx + Integer.BYTES;
         while (true) {
-            ByteVector srcVec = ByteVector.fromArray(SPECIES_512, buffer, src);
+            ByteVector srcVec = ByteVector.fromArray(ByteVector.SPECIES_PREFERRED, buffer, src);
             srcVec.intoArray(stringBuffer, dst);
             long backslashBits = srcVec.eq(BACKSLASH).toLong();
             long quoteBits = srcVec.eq(QUOTE).toLong();
