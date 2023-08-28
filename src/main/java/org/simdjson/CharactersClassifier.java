@@ -36,23 +36,19 @@ class CharactersClassifier {
 
 
     JsonCharacterBlock classify(ByteVector[] chunks) {
-        // VectorShuffle<Byte>[] shuffles = new VectorShuffle[chunks.length];
         for (int i = 0; i < chunks.length; i++) {
             shuffles[i] = extractLowNibble(chunks[i]).toShuffle();
         }
 
-        // ByteVector[] whites = new ByteVector[chunks.length];
         for (int i = 0; i < chunks.length; i++) {
             whites[i] = WHITESPACE_TABLE.rearrange(shuffles[i]);
         }
 
         long whitespace = eq(chunks, whites);
 
-        // ByteVector[] curls = new ByteVector[chunks.length];
         for (int i = 0; i < chunks.length; i++) {
             curls[i] = curlify(chunks[i]);
         }
-        // ByteVector[] ops = new ByteVector[chunks.length];
         for (int i = 0; i < chunks.length; i++) {
             ops[i] = OP_TABLE.rearrange(shuffles[i]);
         }

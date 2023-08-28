@@ -14,7 +14,6 @@ import static org.simdjson.Tape.START_ARRAY;
 import static org.simdjson.Tape.START_OBJECT;
 import static org.simdjson.Tape.STRING;
 import static org.simdjson.Tape.TRUE_VALUE;
-import static jdk.incubator.vector.ByteVector.SPECIES_512;
 
 class TapeBuilder {
 
