@@ -10,6 +10,8 @@ class StructuralIndexer {
     private final JsonStringScanner stringScanner;
     private final CharactersClassifier classifier;
     private final BitIndexes bitIndexes;
+    private final int bytesPerChunk;
+    private final int nChunks;
 
     private long prevStructurals = 0;
     private long unescapedCharsError = 0;
@@ -19,19 +21,24 @@ class StructuralIndexer {
         this.stringScanner = new JsonStringScanner();
         this.classifier = new CharactersClassifier();
         this.bitIndexes = bitIndexes;
+        this.bytesPerChunk = ByteVector.SPECIES_PREFERRED.vectorByteSize();
+        this.nChunks = 64 / bytesPerChunk;
     }
 
     void step(byte[] buffer, int offset, int blockIndex) {
-        ByteVector chunk = ByteVector.fromArray(SPECIES_512, buffer, offset);
+        ByteVector[] chunks = new ByteVector[nChunks];
+        for (int i = 0; i < nChunks; i++) {
+            chunks[i] = ByteVector.fromArray(ByteVector.SPECIES_PREFERRED, buffer, offset + i * bytesPerChunk);
+        }
 
-        JsonStringBlock strings = stringScanner.next(chunk);
-        JsonCharacterBlock characters = classifier.classify(chunk);
+        JsonStringBlock strings = stringScanner.next(chunks);
+        JsonCharacterBlock characters = classifier.classify(chunks);
 
         long scalar = characters.scalar();
         long nonQuoteScalar = scalar & ~strings.quote();
         long followsNonQuoteScalar = nonQuoteScalar << 1 | prevScalar;
         prevScalar = nonQuoteScalar >>> 63;
-        long unescaped = lteq(chunk, (byte) 0x1F);
+        long unescaped = lteq(chunks, (byte) 0x1F);
         // TODO: utf-8 validation
         long potentialScalarStart = scalar & ~followsNonQuoteScalar;
         long potentialStructuralStart = characters.op() | potentialScalarStart;
@@ -40,8 +47,12 @@ class StructuralIndexer {
         unescapedCharsError |= strings.nonQuoteInsideString(unescaped);
     }
 
-    private long lteq(ByteVector chunk, byte scalar) {
-        return chunk.compare(UNSIGNED_LE, scalar).toLong();
+    private long lteq(ByteVector[] chunks, byte scalar) {
+        long r = 0;
+        for (int i = 0; i < nChunks; i++) {
+            r |= chunks[i].compare(UNSIGNED_LE, scalar).toLong() << (i * bytesPerChunk);
+        }  
+        return r;      
     }
 
     void finish(int blockIndex) {

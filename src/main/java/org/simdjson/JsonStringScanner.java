@@ -10,28 +10,36 @@ class JsonStringScanner {
 
     private final ByteVector backslashMask;
     private final ByteVector quoteMask;
+    private final int bytesPerChunk;
+    private final int nChunks;
 
     private long prevInString = 0;
     private long prevEscaped = 0;
 
     JsonStringScanner() {
-        VectorSpecies<Byte> species = ByteVector.SPECIES_512;
+        VectorSpecies<Byte> species = ByteVector.SPECIES_PREFERRED;
         this.backslashMask = ByteVector.broadcast(species, (byte) '\\');
         this.quoteMask = ByteVector.broadcast(species, (byte) '"');
+        this.bytesPerChunk = ByteVector.SPECIES_PREFERRED.vectorByteSize();
+        this.nChunks = 64 / bytesPerChunk;
     }
 
-    JsonStringBlock next(ByteVector chunk) {
-        long backslash = eq(chunk, backslashMask);
+    JsonStringBlock next(ByteVector[] chunks) {
+        long backslash = eq(chunks, backslashMask);
         long escaped = findEscaped(backslash);
-        long quote = eq(chunk, quoteMask) & ~escaped;
+        long quote = eq(chunks, quoteMask) & ~escaped;
         long inString = prefixXor(quote) ^ prevInString;
         prevInString = inString >> 63;
         return new JsonStringBlock(quote, inString);
     }
 
-    private long eq(ByteVector chunk, ByteVector mask) {
-        return chunk.eq(mask).toLong();
-    }
+    private long eq(ByteVector[] chunks, ByteVector mask) {
+        long r = 0;
+        for (int i = 0; i < nChunks; i++) {
+            r |= chunks[i].eq(mask).toLong() << (i * bytesPerChunk);
+        }  
+        return r;  
+    }    
 
     private long findEscaped(long backslash) {
         if (backslash == 0) {
