@@ -157,7 +157,7 @@ class NumberParser {
 
         // Initially, the number we are parsing is in the form of w * 10^q = w * 5^q * 2^q, and our objective is to
         // convert it to m * 2^p. We can represent w * 10^q as w * 5^q * 2^r * 2^p, where w * 5^q * 2^r = m.
-        // As a result, the next step involves computing w * 5^q. The implementation of this multiplication is optimized
+        // Therefore, in the next step we compute w * 5^q. The implementation of this multiplication is optimized
         // to minimize necessary operations while ensuring precise results. For further insight, refer to the
         // aforementioned paper.
         int powersOfFiveTableIndex = 2 * (int) (exp10 - FAST_PATH_MIN_POWER_OF_TEN);
@@ -179,8 +179,23 @@ class NumberParser {
         // values stored in POWERS_OF_FIVE are normalized, ensuring that their most significant bits are set, the product
         // has either 0 or 1 leading zeros. As a result, we need to perform a right shift of either 9 or 10 bits.
         long upperBit = upper >>> 63;
-        long significand2 = upper >>> (upperBit + 9);
+        long upperShift = upperBit + 9;
+        long significand2 = upper >>> upperShift;
 
+        // Now, we have to determine the value of the binary exponent. Let's begin by calculating the contribution of
+        // 10^q. Our goal is to compute f0 and f1 such that:
+        // - when q >= 0: 10^q = (5^q / 2^(f0 - q)) * 2^f0
+        // - when q < 0: 10^q = (2^(f1 - q) / 5^-q) * 2^f1
+        // Both (5^q / 2^(f0 - q)) and (2^(f1 - q) / 5^-q) must fall within the range of [1, 2).
+        // It turns out that these conditions are met when:
+        // - 0 <= q <= FAST_PATH_MAX_POWER_OF_TEN, and f0 = floor(log2(5^q)) + q = floor(q * log(5) / log(2)) + q = (217706 * q) / 2^16.
+        // - FAST_PATH_MIN_POWER_OF_TEN <= q < 0, and f1 = -ceil(log2(5^-q)) + q = -ceil(-q * log(5) / log(2)) + q = (217706 * q) / 2^16.
+        // Thus, we can express the contribution of 10^q to the exponent as (217706 * exp10) >> 16.
+        //
+        // Furthermore, we need to factor in the following normalizations we've performed:
+        // - shifting the decimal significand left bitwise
+        // - shifting the binary significand right bitwise if the most significant bit of the product was 1
+        // Therefore, we add (63 - lz + upperBit) to the exponent.
         long exp2 = ((217706 * exp10) >> 16) + 63 - lz + upperBit;
         if (exp2 < IEEE64_MIN_FINITE_NUMBER_EXPONENT) {
             // In the next step, we right-shift the binary significand by the difference between the minimum exponent
@@ -205,8 +220,11 @@ class NumberParser {
             return toDouble(negative, significand2, exp2);
         }
 
+        // Here, we are addressing a scenario of rounding the binary significand when it falls precisely halfway
+        // between two integers. To understand the rationale behind the condition used to identify this case, refer to
+        // sections 6, 8.1, and 9.1 of "Number Parsing at a Gigabyte per Second".
         if ((compareUnsigned(lower, 1) <= 0) && (exp10 >= -4) && (exp10 <= 23) && ((significand2 & 3) == 1)) {
-            if (significand2 << (upperBit + 64 - 53 - 2) == upper) {
+            if (significand2 << upperShift == upper) {
                 significand2 &= ~1;
             }
         }
@@ -490,7 +508,7 @@ class NumberParser {
             if (exp10 < digitCount) {
                 roundUp = digits[exp10] >= 5;
                 if ((digits[exp10] == 5) && (exp10 + 1 == digitCount)) {
-                    // If the digits haven't been truncated, then we are exactly half-way between two integers. In such
+                    // If the digits haven't been truncated, then we are exactly halfway between two integers. In such
                     // cases, we round to even, otherwise we round up.
                     roundUp = truncated || (significand & 1) == 1;
                 }
