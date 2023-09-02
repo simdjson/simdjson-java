@@ -8,7 +8,6 @@ This implementation is still missing several features available in simdsjon. For
 
 * Support for Unicode characters
 * UTF-8 validation
-* Full support for parsing floats
 * Support for 512-bit vectors
 
 ## Code Sample

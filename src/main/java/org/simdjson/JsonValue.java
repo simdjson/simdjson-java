@@ -112,6 +112,9 @@ public class JsonValue {
             case INT64 -> {
                 return String.valueOf(asLong());
             }
+            case DOUBLE -> {
+                return String.valueOf(asDouble());
+            }
             case TRUE_VALUE, FALSE_VALUE -> {
                 return String.valueOf(asBoolean());
             }

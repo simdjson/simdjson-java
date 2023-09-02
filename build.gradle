@@ -1,10 +1,12 @@
 import me.champeau.jmh.JmhBytecodeGeneratorTask
 import org.gradle.internal.os.OperatingSystem
+import org.ajoberstar.grgit.Grgit
 
 plugins {
     id 'java'
     id 'scala'
     id 'me.champeau.jmh' version '0.7.1'
+    id 'org.ajoberstar.grgit' version '5.2.0'
 }
 
 group = 'org.simdjson'
@@ -37,7 +39,22 @@ dependencies {
     testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: junitVersion
 }
 
+tasks.register('downloadTestData') {
+    doFirst {
+        def testDataDir = new File("${project.projectDir.getAbsolutePath()}/testdata")
+        if (!testDataDir.exists()) {
+            testDataDir.mkdir()
+        }
+        def numbersTestDataDir = new File("${testDataDir}/parse-number-fxx-test-data")
+        if (!numbersTestDataDir.exists()) {
+            def grgit = Grgit.clone(dir: numbersTestDataDir, uri: 'https://github.com/nigeltao/parse-number-fxx-test-data.git')
+            grgit.close()
+        }
+    }
+}
+
 test {
+    dependsOn downloadTestData
     useJUnitPlatform()
     jvmArgs += [
             '--add-modules', 'jdk.incubator.vector',
