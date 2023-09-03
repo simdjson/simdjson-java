@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      forceVersion:
+        description: 'Force version'
+        required: true
+        default: ''
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: gradle/wrapper-validation-action@v1
+
+      - name: Set up JDK 20
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 20
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Release
+        if: github.ref == 'refs/heads/main'
+        id: release
+        run: |
+          ./gradlew release \
+            -Prelease.customPassword=${{ github.token }} \
+            -Prelease.customUsername=${{ github.actor }} \
+            -Prelease.forceVersion=${{ github.event.inputs.forceVersion }}
+          echo "released_version=`./gradlew -q cV -Prelease.quiet`" >> $GITHUB_OUTPUT
+
+      - name: Publish to Maven Central
+        run: ./gradlew build publish
+        env:
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PRIVATE_KEY_PASSWORD: ${{ secrets.GPG_PRIVATE_KEY_PASSWORD }}
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        run: gh release create "${{ steps.release.outputs.released_version }}" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

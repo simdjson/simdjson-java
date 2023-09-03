@@ -1,16 +1,25 @@
 import me.champeau.jmh.JmhBytecodeGeneratorTask
 import org.gradle.internal.os.OperatingSystem
 import org.ajoberstar.grgit.Grgit
+import java.time.Duration
 
 plugins {
     id 'java'
     id 'scala'
     id 'me.champeau.jmh' version '0.7.1'
     id 'org.ajoberstar.grgit' version '5.2.0'
+    id 'pl.allegro.tech.build.axion-release' version '1.15.4'
+    id 'io.github.gradle-nexus.publish-plugin' version '1.3.0'
+    id 'maven-publish'
+    id 'signing'
 }
 
 group = 'org.simdjson'
-version = '0.0.1-SNAPSHOT'
+version = scmVersion.version
+
+scmVersion {
+    versionCreator('versionWithBranch')
+}
 
 repositories {
     mavenCentral()
@@ -20,6 +29,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(20)
     }
+    withJavadocJar()
+    withSourcesJar()
 }
 
 ext {
@@ -103,6 +114,65 @@ jmh {
     if (project.hasProperty('jmh.includes')) {
         includes = [project.findProperty('jmh.includes')]
     }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                name = project.name
+                description = 'A Java version of simdjson, a high-performance JSON parser utilizing SIMD instructions.'
+                url = 'https://github.com/simdjson/simdjson-java'
+                issueManagement {
+                    system = 'GitHub Issue Tracking'
+                    url = 'https://github.com/simdjson/simdjson-java/issues'
+                }
+                licenses {
+                    license {
+                        name = 'Apache 2'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'piotrrzysko'
+                        name = 'Piotr Rżysko'
+                        email = 'piotr.rzysko@gmail.com'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/simdjson/simdjson-java'
+                    connection = 'scm:git@github.com:simdjson/simdjson-java.git'
+                    developerConnection = 'scm:git@github.com:simdjson/simdjson-java.git'
+                }
+            }
+        }
+    }
+}
+
+if (System.getenv('GPG_KEY_ID')) {
+    signing {
+        useInMemoryPgpKeys(
+                System.getenv('GPG_KEY_ID'),
+                System.getenv('GPG_PRIVATE_KEY'),
+                System.getenv('GPG_PRIVATE_KEY_PASSWORD')
+        )
+        sign publishing.publications.mavenJava
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl = uri('https://s01.oss.sonatype.org/service/local/')
+            snapshotRepositoryUrl = uri('https://s01.oss.sonatype.org/content/repositories/snapshots/')
+            stagingProfileId = '' // TODO: waiting for https://issues.sonatype.org/browse/OSSRH-94710
+            username = System.getenv('SONATYPE_USERNAME')
+            password = System.getenv('SONATYPE_PASSWORD')
+        }
+    }
+    connectTimeout = Duration.ofMinutes(3)
+    clientTimeout = Duration.ofMinutes(3)
 }
 
 def getBooleanProperty(String name, boolean defaultValue) {
