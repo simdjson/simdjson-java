@@ -91,6 +91,10 @@ compileTestJava {
     ]
 }
 
+javadoc.options {
+    addStringOption('-add-modules', 'jdk.incubator.vector')
+}
+
 jmh {
     fork = 1
     warmupIterations = 3
@@ -119,6 +123,8 @@ jmh {
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            from(components.java)
+
             pom {
                 name = project.name
                 description = 'A Java version of simdjson, a high-performance JSON parser utilizing SIMD instructions.'

@@ -9,7 +9,7 @@ on:
         default: ''
 
 jobs:
-  release:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
