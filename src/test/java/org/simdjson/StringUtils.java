@@ -19,32 +19,7 @@ class StringUtils {
         return new String(padded, UTF_8);
     }
 
-
-    static ByteVector chunk(String str) {
-        return ByteVector.fromArray(ByteVector.SPECIES_512, str.getBytes(UTF_8), 0);
-    }
-
-    static ByteVector chunk0(String str) {
-        return ByteVector.fromArray(ByteVector.SPECIES_256, str.getBytes(UTF_8), 0);
-    }
-
-    static ByteVector chunk1(String str) {
-        return ByteVector.fromArray(ByteVector.SPECIES_256, str.getBytes(UTF_8), 32);
-    }
-
     static ByteVector chunk(String str, int n) {
-        return ByteVector.fromArray(ByteVector.SPECIES_PREFERRED, str.getBytes(UTF_8), n * 32);
-    }
-
-    static ByteVector[] chunks(String str) {
-        int bytesPerChunk = ByteVector.SPECIES_PREFERRED.vectorByteSize();
-        int nChunks = 64 / bytesPerChunk;
-        ByteVector[] chunks = switch (nChunks) {
-            case 1 -> new ByteVector[] {chunk(str, 0)};
-            case 2 -> new ByteVector[] {chunk(str, 0), chunk(str, 1)};
-            case 4 -> new ByteVector[] {chunk(str, 0), chunk(str, 1), chunk(str, 2), chunk(str, 3)};
-            default -> throw new RuntimeException("Unsupported chunk count: " + nChunks);
-        };
-        return chunks;
+        return ByteVector.fromArray(StructuralIndexer.SPECIES, str.getBytes(UTF_8), n * StructuralIndexer.SPECIES.vectorByteSize());
     }
 }

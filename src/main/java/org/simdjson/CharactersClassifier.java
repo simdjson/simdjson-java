@@ -9,14 +9,14 @@ class CharactersClassifier {
 
     private static final ByteVector WHITESPACE_TABLE = 
         ByteVector.fromArray(
-            ByteVector.SPECIES_PREFERRED, 
-            repeat(new byte[]{' ', 100, 100, 100, 17, 100, 113, 2, 100, '\t', '\n', 112, 100, '\r', 100, 100}, ByteVector.SPECIES_PREFERRED.vectorByteSize() / 4), 
+            StructuralIndexer.SPECIES, 
+            repeat(new byte[]{' ', 100, 100, 100, 17, 100, 113, 2, 100, '\t', '\n', 112, 100, '\r', 100, 100}, StructuralIndexer.SPECIES.vectorByteSize() / 4), 
             0);
 
     private static final ByteVector OP_TABLE = 
         ByteVector.fromArray(
-            ByteVector.SPECIES_PREFERRED, 
-            repeat(new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ':', '{', ',', '}', 0, 0}, ByteVector.SPECIES_PREFERRED.vectorByteSize() / 4), 
+            StructuralIndexer.SPECIES, 
+            repeat(new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ':', '{', ',', '}', 0, 0}, StructuralIndexer.SPECIES.vectorByteSize() / 4), 
             0);
 
     private static byte[] repeat(byte[] array, int n) {
@@ -27,34 +27,42 @@ class CharactersClassifier {
         return result;
     }
 
-    private static final int bytesPerChunk = ByteVector.SPECIES_PREFERRED.vectorByteSize();
-    private static final int nChunks = 64 / bytesPerChunk;
-    private static final VectorShuffle[] shuffles = new VectorShuffle[nChunks];
-    private static final ByteVector[] whites = new ByteVector[nChunks];
-    private static final ByteVector[] curls = new ByteVector[nChunks];
-    private static final ByteVector[] ops = new ByteVector[nChunks];
+    JsonCharacterBlock classify(ByteVector chunk0) {
+        VectorShuffle<Byte> chunk0Low = extractLowNibble(chunk0).toShuffle();
+        long whitespace = eq(chunk0, WHITESPACE_TABLE.rearrange(chunk0Low));
+        ByteVector curlified0 = curlify(chunk0);
+        long op = eq(curlified0, OP_TABLE.rearrange(chunk0Low));
+        return new JsonCharacterBlock(whitespace, op);
+    }
 
+    JsonCharacterBlock classify(ByteVector chunk0, ByteVector chunk1) {
+        VectorShuffle<Byte> chunk0Low = extractLowNibble(chunk0).toShuffle();
+        VectorShuffle<Byte> chunk1Low = extractLowNibble(chunk1).toShuffle();
+        long whitespace = eq(chunk0, WHITESPACE_TABLE.rearrange(chunk0Low), chunk1, WHITESPACE_TABLE.rearrange(chunk1Low));
+        ByteVector curlified0 = curlify(chunk0);
+        ByteVector curlified1 = curlify(chunk1);
+        long op = eq(curlified0, OP_TABLE.rearrange(chunk0Low), curlified1, OP_TABLE.rearrange(chunk1Low));
+        return new JsonCharacterBlock(whitespace, op);
+    }
 
-    JsonCharacterBlock classify(ByteVector[] chunks) {
-        for (int i = 0; i < chunks.length; i++) {
-            shuffles[i] = extractLowNibble(chunks[i]).toShuffle();
-        }
+   JsonCharacterBlock classify(ByteVector chunk0, ByteVector chunk1, ByteVector chunk2, ByteVector chunk3) {
+        VectorShuffle<Byte> chunk0Low = extractLowNibble(chunk0).toShuffle();
+        VectorShuffle<Byte> chunk1Low = extractLowNibble(chunk1).toShuffle();
+        VectorShuffle<Byte> chunk2Low = extractLowNibble(chunk2).toShuffle();
+        VectorShuffle<Byte> chunk3Low = extractLowNibble(chunk3).toShuffle();
 
-        for (int i = 0; i < chunks.length; i++) {
-            whites[i] = WHITESPACE_TABLE.rearrange(shuffles[i]);
-        }
-
-        long whitespace = eq(chunks, whites);
-
-        for (int i = 0; i < chunks.length; i++) {
-            curls[i] = curlify(chunks[i]);
-        }
-        for (int i = 0; i < chunks.length; i++) {
-            ops[i] = OP_TABLE.rearrange(shuffles[i]);
-        }
-
-        long op = eq(curls, ops);
+        long whitespace = 
+             eq(chunk0, WHITESPACE_TABLE.rearrange(chunk0Low),
+                chunk1, WHITESPACE_TABLE.rearrange(chunk1Low),
+                chunk2, WHITESPACE_TABLE.rearrange(chunk2Low),
+                chunk3, WHITESPACE_TABLE.rearrange(chunk3Low));
         
+        long op = 
+             eq(curlify(chunk0), OP_TABLE.rearrange(chunk0Low),
+                curlify(chunk1), OP_TABLE.rearrange(chunk1Low),
+                curlify(chunk2), OP_TABLE.rearrange(chunk2Low),
+                curlify(chunk3), OP_TABLE.rearrange(chunk3Low));
+
         return new JsonCharacterBlock(whitespace, op);
     }
 
@@ -67,12 +75,21 @@ class CharactersClassifier {
         return vector.or((byte) 0x20);
     }
 
-    private long eq(ByteVector[] chunks, ByteVector[] masks) {
-        long r = 0;
-        for (int i = 0; i < chunks.length; i++) {
-            r |= chunks[i].eq(masks[i]).toLong() << (i * ByteVector.SPECIES_PREFERRED.vectorByteSize());
-        }  
-        return r;  
-    }    
+    private long eq(ByteVector chunk0, ByteVector mask0) {
+        return chunk0.eq(mask0).toLong();
+    }       
 
+    private long eq(ByteVector chunk0, ByteVector mask0, ByteVector chunk1, ByteVector mask1) {
+        long r0 = chunk0.eq(mask0).toLong();
+        long r1 = chunk1.eq(mask1).toLong();
+        return r0 | (r1 << 32);
+    }       
+
+    private long eq(ByteVector chunk0, ByteVector mask0, ByteVector chunk1, ByteVector mask1, ByteVector chunk2, ByteVector mask2, ByteVector chunk3, ByteVector mask3) {
+        long r0 = chunk0.eq(mask0).toLong();
+        long r1 = chunk1.eq(mask1).toLong();
+        long r2 = chunk2.eq(mask2).toLong();
+        long r3 = chunk3.eq(mask3).toLong();
+        return r0 | (r1 << 16) | (r2 << 32) | (r3 << 48);
+    }       
 }
