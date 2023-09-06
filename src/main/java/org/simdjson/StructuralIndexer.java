@@ -10,8 +10,8 @@ import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
 
 class StructuralIndexer {
 
-    // static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_PREFERRED;
-    static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_512;
+    static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_PREFERRED;
+    // static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_256;
     static final int N_CHUNKS = 64 / SPECIES.vectorByteSize();
     private static final MethodHandle STEP_MH;
 
@@ -50,12 +50,13 @@ class StructuralIndexer {
     // }
 
     public void step(byte[] buffer, int offset, int blockIndex) {
-        step1(buffer, offset, blockIndex);
-        // switch (N_CHUNKS) {
-        //     case 1: step1(buffer, offset, blockIndex); break;
-        //     case 2: step2(buffer, offset, blockIndex); break;
-        //     case 4: step4(buffer, offset, blockIndex); break;
-        // }
+        // step4(buffer, offset, blockIndex);
+        switch (N_CHUNKS) {
+            case 1: step1(buffer, offset, blockIndex); break;
+            case 2: step2(buffer, offset, blockIndex); break;
+            case 4: step4(buffer, offset, blockIndex); break;
+            default: throw new RuntimeException("Unsupported vector width: " + N_CHUNKS * 64);
+        }
     }
 
     void step1(byte[] buffer, int offset, int blockIndex) {
