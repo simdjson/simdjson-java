@@ -45,27 +45,6 @@ class CharactersClassifier {
         return new JsonCharacterBlock(whitespace, op);
     }
 
-   JsonCharacterBlock classify(ByteVector chunk0, ByteVector chunk1, ByteVector chunk2, ByteVector chunk3) {
-        VectorShuffle<Byte> chunk0Low = extractLowNibble(chunk0).toShuffle();
-        VectorShuffle<Byte> chunk1Low = extractLowNibble(chunk1).toShuffle();
-        VectorShuffle<Byte> chunk2Low = extractLowNibble(chunk2).toShuffle();
-        VectorShuffle<Byte> chunk3Low = extractLowNibble(chunk3).toShuffle();
-
-        long whitespace = 
-             eq(chunk0, WHITESPACE_TABLE.rearrange(chunk0Low),
-                chunk1, WHITESPACE_TABLE.rearrange(chunk1Low),
-                chunk2, WHITESPACE_TABLE.rearrange(chunk2Low),
-                chunk3, WHITESPACE_TABLE.rearrange(chunk3Low));
-        
-        long op = 
-             eq(curlify(chunk0), OP_TABLE.rearrange(chunk0Low),
-                curlify(chunk1), OP_TABLE.rearrange(chunk1Low),
-                curlify(chunk2), OP_TABLE.rearrange(chunk2Low),
-                curlify(chunk3), OP_TABLE.rearrange(chunk3Low));
-
-        return new JsonCharacterBlock(whitespace, op);
-    }
-
     private ByteVector extractLowNibble(ByteVector vector) {
         return vector.and(LOW_NIBBLE_MASK);
     }
@@ -83,13 +62,5 @@ class CharactersClassifier {
         long r0 = chunk0.eq(mask0).toLong();
         long r1 = chunk1.eq(mask1).toLong();
         return r0 | (r1 << 32);
-    }       
-
-    private long eq(ByteVector chunk0, ByteVector mask0, ByteVector chunk1, ByteVector mask1, ByteVector chunk2, ByteVector mask2, ByteVector chunk3, ByteVector mask3) {
-        long r0 = chunk0.eq(mask0).toLong();
-        long r1 = chunk1.eq(mask1).toLong();
-        long r2 = chunk2.eq(mask2).toLong();
-        long r3 = chunk3.eq(mask3).toLong();
-        return r0 | (r1 << 16) | (r2 << 32) | (r3 << 48);
     }       
 }

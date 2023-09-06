@@ -10,19 +10,15 @@ import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
 
 class StructuralIndexer {
 
-    static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_PREFERRED;
-    // static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_256;
-    static final int N_CHUNKS = 64 / SPECIES.vectorByteSize();
-    private static final MethodHandle STEP_MH;
+    static final VectorSpecies<Byte> SPECIES;
+    static final int N_CHUNKS;
 
     static {
-        try {
-            String stepMethodName = "step" + StructuralIndexer.N_CHUNKS;
-            STEP_MH = MethodHandles.lookup().findVirtual(StructuralIndexer.class, stepMethodName, MethodType.methodType(void.class, byte[].class, int.class, int.class));
-        } 
-        catch (NoSuchMethodException | IllegalAccessException e) {
-            throw new ExceptionInInitializerError(e);
-        }    
+        SPECIES = ByteVector.SPECIES_PREFERRED;
+        N_CHUNKS = 64 / SPECIES.vectorByteSize();
+        if (SPECIES != ByteVector.SPECIES_256 && SPECIES != ByteVector.SPECIES_512) {
+            throw new IllegalArgumentException("Unsupported vector species: " + SPECIES);
+        }
     }
 
     private final JsonStringScanner stringScanner;
@@ -39,22 +35,10 @@ class StructuralIndexer {
         this.bitIndexes = bitIndexes;
     }
 
-    // public void step(byte[] buffer, int offset, int blockIndex) {
-    //     try {
-    //         STEP_MH.invokeExact(this, buffer, offset, blockIndex);
-    //     }
-    //     catch (Throwable t) 
-    //     {
-    //         throw new RuntimeException(t);
-    //     }
-    // }
-
     public void step(byte[] buffer, int offset, int blockIndex) {
-        // step4(buffer, offset, blockIndex);
         switch (N_CHUNKS) {
             case 1: step1(buffer, offset, blockIndex); break;
             case 2: step2(buffer, offset, blockIndex); break;
-            case 4: step4(buffer, offset, blockIndex); break;
             default: throw new RuntimeException("Unsupported vector width: " + N_CHUNKS * 64);
         }
     }
@@ -73,17 +57,6 @@ class StructuralIndexer {
         JsonStringBlock strings = stringScanner.next(chunk0, chunk1);
         JsonCharacterBlock characters = classifier.classify(chunk0, chunk1);
         long unescaped = lteq(chunk0, chunk1, (byte) 0x1F);
-        finishStep(characters, strings, unescaped, blockIndex);
-    }
-
-    void step4(byte[] buffer, int offset, int blockIndex) {
-        ByteVector chunk0 = ByteVector.fromArray(ByteVector.SPECIES_128, buffer, offset);
-        ByteVector chunk1 = ByteVector.fromArray(ByteVector.SPECIES_128, buffer, offset + 16);
-        ByteVector chunk2 = ByteVector.fromArray(ByteVector.SPECIES_128, buffer, offset + 32);
-        ByteVector chunk3 = ByteVector.fromArray(ByteVector.SPECIES_128, buffer, offset + 48);
-        JsonStringBlock strings = stringScanner.next(chunk0, chunk1, chunk2, chunk3);
-        JsonCharacterBlock characters = classifier.classify(chunk0, chunk1, chunk2, chunk3);
-        long unescaped = lteq(chunk0, chunk1, chunk2, chunk3, (byte) 0x1F);
         finishStep(characters, strings, unescaped, blockIndex);
     }
 
@@ -109,14 +82,6 @@ class StructuralIndexer {
         long r0 = chunk0.compare(UNSIGNED_LE, scalar).toLong();
         long r1 = chunk1.compare(UNSIGNED_LE, scalar).toLong();
         return r0 | (r1 << 32);
-    }
-
-    private long lteq(ByteVector chunk0, ByteVector chunk1, ByteVector chunk2, ByteVector chunk3, byte scalar) {
-        long r0 = chunk0.compare(UNSIGNED_LE, scalar).toLong();
-        long r1 = chunk1.compare(UNSIGNED_LE, scalar).toLong();
-        long r2 = chunk2.compare(UNSIGNED_LE, scalar).toLong();
-        long r3 = chunk3.compare(UNSIGNED_LE, scalar).toLong();
-        return r0 | (r1 << 16) | (r2 << 32) | (r3 << 48);
     }
 
     void finish(int blockIndex) {

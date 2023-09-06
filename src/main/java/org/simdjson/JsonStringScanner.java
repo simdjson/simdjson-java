@@ -37,15 +37,6 @@ class JsonStringScanner {
         return new JsonStringBlock(quote, inString);
     }
 
-    JsonStringBlock next(ByteVector chunk0, ByteVector chunk1, ByteVector chunk2, ByteVector chunk3) {
-        long backslash = eq(chunk0, chunk1, chunk2, chunk3, backslashMask);
-        long escaped = findEscaped(backslash);
-        long quote = eq(chunk0, chunk1, chunk2, chunk3, quoteMask) & ~escaped;
-        long inString = prefixXor(quote) ^ prevInString;
-        prevInString = inString >> 63;
-        return new JsonStringBlock(quote, inString);
-    }
-
     private long eq(ByteVector chunk0, ByteVector mask) {
         long r = chunk0.eq(mask).toLong();
         return r;
@@ -55,14 +46,6 @@ class JsonStringScanner {
         long r0 = chunk0.eq(mask).toLong();
         long r1 = chunk1.eq(mask).toLong();
         return r0 | (r1 << 32);
-    }
-
-    private long eq(ByteVector chunk0, ByteVector chunk1, ByteVector chunk2, ByteVector chunk3, ByteVector mask) {
-        long r0 = chunk0.eq(mask).toLong();
-        long r1 = chunk1.eq(mask).toLong();
-        long r2 = chunk2.eq(mask).toLong();
-        long r3 = chunk3.eq(mask).toLong();
-        return r0 | (r1 << 16) | (r2 << 32) | (r3 << 48);
     }
 
     private long findEscaped(long backslash) {
