@@ -1,4 +1,8 @@
-# simdjson-java
+simdjson-java
+=============
+![Build Status](https://github.com/simdjson/simdjson-java/actions/workflows/ci.yml/badge.svg)
+[![](https://maven-badges.herokuapp.com/maven-central/org.simdjson/simdjson-java/badge.svg)](https://central.sonatype.com/search?namespace=org.simdjson)
+[![](https://img.shields.io/badge/License-Apache%202-blue.svg)](LICENSE)
 
 A Java version of [simdjson](https://github.com/simdjson/simdjson) - a JSON parser using SIMD instructions,
 based on the paper [Parsing Gigabytes of JSON per Second](https://arxiv.org/abs/1902.08318) 
@@ -8,16 +12,14 @@ This implementation is still missing several features available in simdsjon. For
 
 * Support for Unicode characters
 * UTF-8 validation
-* Full support for parsing floats
 * Support for 512-bit vectors
 
 ## Code Sample
 
 ```java
 byte[] json = loadTwitterJson();
-
-SimdJsonParser simdJsonParser = new SimdJsonParser();
-JsonValue jsonValue = simdJsonParser.parse(json, json.length);
+SimdJsonParser parser = new SimdJsonParser();
+JsonValue jsonValue = parser.parse(json, json.length);
 Iterator<JsonValue> tweets = jsonValue.get("statuses").arrayIterator();
 while (tweets.hasNext()) {
     JsonValue tweet = tweets.next();
@@ -27,6 +29,30 @@ while (tweets.hasNext()) {
     }
 }
 ```
+
+## Installation
+
+The library is available in the [Maven Central Repository](https://mvnrepository.com/artifact/org.simdjson/simdjson-java). 
+To include it in your project, add the following dependency to the `build.gradle` file:
+```groovy
+implementation("org.simdjson:simdjson-java:0.1.0")
+```
+
+or to the `pom.xml` file:
+```xml
+<dependency>
+    <groupId>org.simdjson</groupId>
+    <artifactId>simdjson-java</artifactId>
+    <version>0.1.0</version>
+</dependency>
+```
+
+Please remember about specifying the desired version. 
+
+Note that simdjson-java follows the [SemVer specification](https://semver.org/), which means, for example, that a major 
+version of zero indicates initial development, so the library's API should not be considered stable.
+
+We require Java 20 or better.
 
 ## Benchmarks
 
@@ -65,3 +91,5 @@ Environment:
 To reproduce the benchmark results, execute the following command:
 
 ```./gradlew jmh -Pjmh.includes='.*ParseAndSelectBenchmark.*'```
+
+The benchmark may take several minutes. Remember that you need Java 20 or better.

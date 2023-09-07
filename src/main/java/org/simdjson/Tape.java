@@ -18,14 +18,11 @@ class Tape {
     private static final int JSON_COUNT_MASK = 0xFFFFFF;
 
     private final long[] tape;
-    private final double[] doubleTape;
 
     private int tapeIdx;
-    private int doubleTapeIdx;
 
     Tape(int capacity) {
         tape = new long[capacity];
-        doubleTape = new double[capacity];
     }
 
     void append(long val, char type) {
@@ -40,9 +37,9 @@ class Tape {
     }
 
     void appendDouble(double val) {
-        append(doubleTapeIdx, DOUBLE);
-        doubleTape[doubleTapeIdx] = val;
-        doubleTapeIdx++;
+        append(0, DOUBLE);
+        tape[tapeIdx] = Double.doubleToRawLongBits(val);
+        tapeIdx++;
     }
 
     void write(int idx, long val, char type) {
@@ -55,7 +52,6 @@ class Tape {
 
     void reset() {
         tapeIdx = 0;
-        doubleTapeIdx = 0;
     }
 
     int getCurrentIdx() {
@@ -75,8 +71,8 @@ class Tape {
     }
 
     double getDouble(int idx) {
-        int doubleTapeIdx = (int) getValue(idx);
-        return doubleTape[doubleTapeIdx];
+        long bits = getInt64Value(idx);
+        return Double.longBitsToDouble(bits);
     }
 
     int getMatchingBraceIndex(int idx) {
@@ -92,7 +88,7 @@ class Tape {
             case START_ARRAY, START_OBJECT -> {
                 return getMatchingBraceIndex(idx);
             }
-            case INT64 -> {
+            case INT64, DOUBLE -> {
                 return idx + 2;
             }
             default -> {
