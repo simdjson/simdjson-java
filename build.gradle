@@ -19,6 +19,9 @@ version = scmVersion.version
 
 scmVersion {
     versionCreator('versionWithBranch')
+    tag {
+        prefix = ''
+    }
 }
 
 repositories {
