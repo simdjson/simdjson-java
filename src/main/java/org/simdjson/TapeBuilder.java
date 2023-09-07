@@ -86,7 +86,7 @@ class TapeBuilder {
             case 'f' -> visitRootFalseAtom(buffer, idx);
             case 'n' -> visitRootNullAtom(buffer, idx);
             case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> visitRootNumber(buffer, idx, len);
-            default -> throw new JsonParsingException("Document starts with a non-value character");
+            default -> throw new JsonParsingException("Unrecognized primitive. Expected: string, number, 'true', 'false' or 'null'.");
         }
     }
 
@@ -97,7 +97,7 @@ class TapeBuilder {
             case 'f' -> visitFalseAtom(buffer, idx);
             case 'n' -> visitNullAtom(buffer, idx);
             case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> visitNumber(buffer, idx);
-            default -> throw new JsonParsingException("Non-value found when value was expected!");
+            default -> throw new JsonParsingException("Unrecognized primitive. Expected: string, number, 'true', 'false' or 'null'.");
         }
     }
 
@@ -246,7 +246,7 @@ class TapeBuilder {
     }
 
     private void visitNumber(byte[] buffer, int idx) {
-        numberParser.parseNumber(buffer, idx, idx);
+        numberParser.parseNumber(buffer, idx);
     }
 
     private void visitRootNumber(byte[] buffer, int idx, int len) {
@@ -254,7 +254,7 @@ class TapeBuilder {
         byte[] copy = new byte[remainingLen + padding];
         System.arraycopy(buffer, idx, copy, 0, remainingLen);
         Arrays.fill(copy, remainingLen, remainingLen + padding, SPACE);
-        numberParser.parseNumber(copy, 0, idx);
+        numberParser.parseNumber(copy, 0);
     }
 
     private void startContainer(int depth) {
@@ -281,7 +281,7 @@ class TapeBuilder {
         stringBufferIdx = 0;
     }
 
-    public JsonValue createJsonValue(byte[] buffer) {
+    JsonValue createJsonValue(byte[] buffer) {
         return new JsonValue(tape, 1, stringBuffer, buffer);
     }
 
