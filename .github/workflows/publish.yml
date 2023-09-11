@@ -37,7 +37,7 @@ jobs:
           echo "released_version=`./gradlew -q cV -Prelease.quiet`" >> $GITHUB_OUTPUT
 
       - name: Publish to Maven Central
-        run: ./gradlew build publish
+        run: ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
