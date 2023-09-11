@@ -10,7 +10,6 @@ by Geoff Langdale and Daniel Lemire.
 
 This implementation is still missing several features available in simdsjon. For example:
 
-* Support for Unicode characters
 * UTF-8 validation
 * Support for 512-bit vectors
 

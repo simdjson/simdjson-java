@@ -21,7 +21,7 @@ import static org.simdjson.SimdJsonPaddingUtil.padded;
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class ParseBenchmark {
 
-    @Param({"/twitter.json" /*, "/gsoc-2018.json - unicode is not supported yet"*/, "/github_events.json"})
+    @Param({"/twitter.json", "/gsoc-2018.json", "/github_events.json"})
     String fileName;
 
     private final SimdJsonParser simdJsonParser = new SimdJsonParser();

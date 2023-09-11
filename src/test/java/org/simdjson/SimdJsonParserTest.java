@@ -7,10 +7,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.Iterator;
 import java.util.Map;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.simdjson.JsonValueAssert.assertThat;
 import static org.simdjson.StringUtils.toUtf8;
 
 public class SimdJsonParserTest {
@@ -92,8 +92,8 @@ public class SimdJsonParserTest {
         while (it.hasNext()) {
             Map.Entry<CharSequence, JsonValue> field = it.next();
             CharSequence key = field.getKey();
-            assertString(key, expectedKeys[counter]);
-            assertLong(field.getValue(), expectedValue[counter]);
+            assertThat(key).usingComparator(CharSequence::compare).isEqualTo(expectedKeys[counter]);
+            assertThat(field.getValue()).isEqualTo(expectedValue[counter]);
             counter++;
         }
         assertThat(counter).isEqualTo(expectedKeys.length);
@@ -112,8 +112,8 @@ public class SimdJsonParserTest {
         assertThat(jsonValue.isArray()).isTrue();
         Iterator<JsonValue> it = jsonValue.arrayIterator();
         assertThat(it.hasNext()).isTrue();
-        assertBoolean(it.next(), true);
-        assertBoolean(it.next(), false);
+        assertThat(it.next()).isEqualTo(true);
+        assertThat(it.next()).isEqualTo(false);
         assertThat(it.hasNext()).isFalse();
     }
 
@@ -128,7 +128,7 @@ public class SimdJsonParserTest {
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertBoolean(jsonValue, booleanVal);
+        assertThat(jsonValue).isEqualTo(booleanVal);
     }
 
     @Test
@@ -175,8 +175,8 @@ public class SimdJsonParserTest {
         assertThat(jsonValue.isArray()).isTrue();
         Iterator<JsonValue> it = jsonValue.arrayIterator();
         assertThat(it.hasNext()).isTrue();
-        assertString(it.next(), "abc");
-        assertString(it.next(), "ab\\c");
+        assertThat(it.next()).isEqualTo("abc");
+        assertThat(it.next()).isEqualTo("ab\\c");
         assertThat(it.hasNext()).isFalse();
     }
 
@@ -191,7 +191,7 @@ public class SimdJsonParserTest {
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertString(jsonValue, jsonStr);
+        assertThat(jsonValue).isEqualTo(jsonStr);
     }
 
     @Test
@@ -207,10 +207,10 @@ public class SimdJsonParserTest {
         assertThat(jsonValue.isArray()).isTrue();
         Iterator<JsonValue> it = jsonValue.arrayIterator();
         assertThat(it.hasNext()).isTrue();
-        assertLong(it.next(), 0);
-        assertLong(it.next(), 1);
-        assertLong(it.next(), -1);
-        assertDouble(it.next(), "1.1");
+        assertThat(it.next()).isEqualTo(0);
+        assertThat(it.next()).isEqualTo(1);
+        assertThat(it.next()).isEqualTo(-1);
+        assertThat(it.next()).isEqualTo(1.1);
         assertThat(it.hasNext()).isFalse();
     }
 
@@ -225,7 +225,7 @@ public class SimdJsonParserTest {
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertLong(jsonValue, Long.parseLong(longStr));
+        assertThat(jsonValue).isEqualTo(Long.parseLong(longStr));
     }
 
     @ParameterizedTest
@@ -239,7 +239,7 @@ public class SimdJsonParserTest {
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertDouble(jsonValue, doubleStr);
+        assertThat(jsonValue).isEqualTo(Double.parseDouble(doubleStr));
     }
 
     @ParameterizedTest
@@ -300,50 +300,6 @@ public class SimdJsonParserTest {
     }
 
     @Test
-    public void testUnicodeString() {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("[\"\\u005C\"]");
-
-        // when
-        UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class, () -> parser.parse(json, json.length));
-
-        // then
-        assertThat(ex.getMessage()).isEqualTo("Support for unicode characters is not implemented yet.");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"\\g", "\\ą"})
-    public void testInvalidEscape(String jsonStr) {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("[\"" + jsonStr + "\"]");
-
-        // when
-        JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
-
-        // then
-        assertThat(ex.getMessage()).startsWith("Escaped unexpected character: ");
-    }
-
-    @Test
-    public void testLongString() {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]");
-
-        // when
-        JsonValue jsonValue = parser.parse(json, json.length);
-
-        // then
-        assertThat(jsonValue.isArray()).isTrue();
-        Iterator<JsonValue> it = jsonValue.arrayIterator();
-        assertThat(it.hasNext()).isTrue();
-        assertString(it.next(), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        assertThat(it.hasNext()).isFalse();
-    }
-
-    @Test
     public void testArraySize() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
@@ -392,34 +348,5 @@ public class SimdJsonParserTest {
         // then
         assertThat(jsonValue.isArray()).isTrue();
         assertThat(jsonValue.getSize()).isEqualTo(0xFFFFFF);
-    }
-
-    private static void assertString(JsonValue actual, String expected) {
-        assertThat(actual.isString()).isTrue();
-        assertThat(actual.asString()).isEqualTo(expected);
-        assertString(actual.asCharSequence(), expected);
-    }
-
-    private static void assertString(CharSequence actual, String expected) {
-        byte[] bytesExpected = expected.getBytes(UTF_8);
-        assertThat(actual.length()).isEqualTo(bytesExpected.length);
-        for (int i = 0; i < actual.length(); i++) {
-            assertThat((byte) actual.charAt(i)).isEqualTo(bytesExpected[i]);
-        }
-    }
-
-    private static void assertBoolean(JsonValue actual, boolean expected) {
-        assertThat(actual.isBoolean()).isTrue();
-        assertThat(actual.asBoolean()).isEqualTo(expected);
-    }
-
-    private static void assertLong(JsonValue actual, long expected) {
-        assertThat(actual.isLong()).isTrue();
-        assertThat(actual.asLong()).isEqualTo(expected);
-    }
-
-    private static void assertDouble(JsonValue actual, String str) {
-        assertThat(actual.isDouble()).isTrue();
-        assertThat(actual.asDouble()).isEqualTo(Double.valueOf(str));
     }
 }
