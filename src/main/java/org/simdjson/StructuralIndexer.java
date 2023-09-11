@@ -2,8 +2,6 @@ package org.simdjson;
 
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.VectorSpecies;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
@@ -35,7 +33,7 @@ class StructuralIndexer {
         this.bitIndexes = bitIndexes;
     }
 
-    public void step(byte[] buffer, int offset, int blockIndex) {
+    void step(byte[] buffer, int offset, int blockIndex) {
         switch (N_CHUNKS) {
             case 1: step1(buffer, offset, blockIndex); break;
             case 2: step2(buffer, offset, blockIndex); break;
@@ -43,7 +41,7 @@ class StructuralIndexer {
         }
     }
 
-    void step1(byte[] buffer, int offset, int blockIndex) {
+    private void step1(byte[] buffer, int offset, int blockIndex) {
         ByteVector chunk0 = ByteVector.fromArray(ByteVector.SPECIES_512, buffer, offset);       
         JsonStringBlock strings = stringScanner.next(chunk0);
         JsonCharacterBlock characters = classifier.classify(chunk0);
@@ -51,7 +49,7 @@ class StructuralIndexer {
         finishStep(characters, strings, unescaped, blockIndex);
     }
 
-    void step2(byte[] buffer, int offset, int blockIndex) {
+    private void step2(byte[] buffer, int offset, int blockIndex) {
         ByteVector chunk0 = ByteVector.fromArray(ByteVector.SPECIES_256, buffer, offset);
         ByteVector chunk1 = ByteVector.fromArray(ByteVector.SPECIES_256, buffer, offset + 32);
         JsonStringBlock strings = stringScanner.next(chunk0, chunk1);
@@ -60,7 +58,7 @@ class StructuralIndexer {
         finishStep(characters, strings, unescaped, blockIndex);
     }
 
-    void finishStep(JsonCharacterBlock characters, JsonStringBlock strings, long unescaped, int blockIndex) {
+    private void finishStep(JsonCharacterBlock characters, JsonStringBlock strings, long unescaped, int blockIndex) {
         long scalar = characters.scalar();
         long nonQuoteScalar = scalar & ~strings.quote();
         long followsNonQuoteScalar = nonQuoteScalar << 1 | prevScalar;
