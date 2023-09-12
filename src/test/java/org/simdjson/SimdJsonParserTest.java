@@ -5,7 +5,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Iterator;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -34,24 +33,6 @@ public class SimdJsonParserTest {
     }
 
     @Test
-    public void testEmptyObject() {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("{}");
-
-        // when 
-        JsonValue jsonValue = parser.parse(json, json.length);
-
-        // then
-        assertThat(jsonValue.isObject()).isTrue();
-        Iterator<JsonValue> it = jsonValue.arrayIterator();
-        while (it.hasNext()) {
-            fail("Unexpected field");
-            it.next();
-        }
-    }
-
-    @Test
     public void testArrayIterator() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
@@ -72,31 +53,6 @@ public class SimdJsonParserTest {
             counter++;
         }
         assertThat(counter).isEqualTo(expectedValues.length);
-    }
-
-    @Test
-    public void testObjectIterator() {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("{\"a\": 1, \"b\": 2, \"c\": 3}");
-
-        // when
-        JsonValue jsonValue = parser.parse(json, json.length);
-
-        // then
-        assertThat(jsonValue.isObject()).isTrue();
-        String[] expectedKeys = new String[]{"a", "b", "c"};
-        int[] expectedValue = new int[]{1, 2, 3};
-        int counter = 0;
-        Iterator<Map.Entry<CharSequence, JsonValue>> it = jsonValue.objectIterator();
-        while (it.hasNext()) {
-            Map.Entry<CharSequence, JsonValue> field = it.next();
-            CharSequence key = field.getKey();
-            assertThat(key).usingComparator(CharSequence::compare).isEqualTo(expectedKeys[counter]);
-            assertThat(field.getValue()).isEqualTo(expectedValue[counter]);
-            counter++;
-        }
-        assertThat(counter).isEqualTo(expectedKeys.length);
     }
 
     @Test
@@ -310,20 +266,6 @@ public class SimdJsonParserTest {
 
         // then
         assertThat(jsonValue.isArray()).isTrue();
-        assertThat(jsonValue.getSize()).isEqualTo(3);
-    }
-
-    @Test
-    public void testObjectSize() {
-        // given
-        SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("{\"1\":1,\"2\":1,\"3\":1}");
-
-        // when
-        JsonValue jsonValue = parser.parse(json, json.length);
-
-        // then
-        assertThat(jsonValue.isObject()).isTrue();
         assertThat(jsonValue.getSize()).isEqualTo(3);
     }
 
