@@ -8,11 +8,6 @@ A Java version of [simdjson](https://github.com/simdjson/simdjson) - a JSON pars
 based on the paper [Parsing Gigabytes of JSON per Second](https://arxiv.org/abs/1902.08318) 
 by Geoff Langdale and Daniel Lemire.
 
-This implementation is still missing several features available in simdsjon. For example:
-
-* UTF-8 validation
-* Support for 512-bit vectors
-
 ## Code Sample
 
 ```java
@@ -72,8 +67,8 @@ This section presents a performance comparison of different JSON parsers availab
 the [twitter.json](src/jmh/resources/twitter.json) dataset, and its goal was to measure the throughput (ops/s) of parsing 
 and finding all unique users with a default profile.
 
-**Note that simdjson-java is still missing several features (mentioned in the introduction), so the following results
-may not reflect its real performance.**
+**Note that simdjson-java is still missing several features (see [GitHub Issues](https://github.com/simdjson/simdjson-java/issues)), 
+so the following results may not reflect its real performance.**
 
 Environment:
 * CPU: Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz
