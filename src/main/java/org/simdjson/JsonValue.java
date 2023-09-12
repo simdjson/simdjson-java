@@ -2,6 +2,9 @@ package org.simdjson;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Spliterators;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static org.simdjson.Tape.DOUBLE;
 import static org.simdjson.Tape.FALSE_VALUE;
@@ -96,6 +99,15 @@ public class JsonValue {
             }
         }
         return null;
+    }
+
+    public Stream<JsonValue> stream(String name) {
+        var jsonValue = get(name);
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(jsonValue.arrayIterator(), 0), false);
+    }
+
+    public Stream<JsonValue> stream() {
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(this.arrayIterator(), 0), false);
     }
 
     public String asString() {
