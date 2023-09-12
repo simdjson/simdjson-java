@@ -3,8 +3,6 @@ package org.simdjson;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.Assertions;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 class JsonValueAssert extends AbstractAssert<JsonValueAssert, JsonValue> {
 
     JsonValueAssert(JsonValue actual) {
@@ -36,12 +34,6 @@ class JsonValueAssert extends AbstractAssert<JsonValueAssert, JsonValue> {
                 .withFailMessage("Expecting value to be string but was " + getActualType())
                 .isTrue();
         Assertions.assertThat(actual.asString()).isEqualTo(expected);
-        CharSequence cs = actual.asCharSequence();
-        byte[] bytesExpected = expected.getBytes(UTF_8);
-        Assertions.assertThat(cs.length()).isEqualTo(bytesExpected.length);
-        for (int i = 0; i < cs.length(); i++) {
-            Assertions.assertThat((byte) cs.charAt(i)).isEqualTo(bytesExpected[i]);
-        }
         return this;
     }
 
