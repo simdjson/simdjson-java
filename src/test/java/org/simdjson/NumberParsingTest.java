@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.simdjson.JsonValueAssert.assertThat;
 import static org.simdjson.StringUtils.toUtf8;
 
 public class NumberParsingTest {
@@ -137,7 +138,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertLong(value, 0);
+        assertThat(value).isEqualTo(0);
     }
 
     @Test
@@ -186,7 +187,7 @@ public class NumberParsingTest {
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertLong(jsonValue, input);
+        assertThat(jsonValue).isEqualTo(input);
     }
 
     @ParameterizedTest
@@ -224,7 +225,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, expected);
+        assertThat(value).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -245,7 +246,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, expected);
+        assertThat(value).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -270,7 +271,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, Double.POSITIVE_INFINITY);
+        assertThat(value).isEqualTo(Double.POSITIVE_INFINITY);
     }
 
     @ParameterizedTest
@@ -295,7 +296,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, Double.NEGATIVE_INFINITY);
+        assertThat(value).isEqualTo(Double.NEGATIVE_INFINITY);
     }
 
     @ParameterizedTest
@@ -321,7 +322,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, 0.0);
+        assertThat(value).isEqualTo(0.0);
     }
 
     @ParameterizedTest
@@ -347,7 +348,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, -0.0);
+        assertThat(value).isEqualTo(-0.0);
     }
 
     @ParameterizedTest
@@ -366,8 +367,8 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, 7.2057594037927933e16);
-        assertDouble(value, 7.2057594037927936e16);
+        assertThat(value).isEqualTo(7.2057594037927933e16);
+        assertThat(value).isEqualTo(7.2057594037927936e16);
     }
 
     @ParameterizedTest
@@ -387,7 +388,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, 0x1p-1022);
+        assertThat(value).isEqualTo(0x1p-1022);
     }
 
     @ParameterizedTest
@@ -408,7 +409,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, 0x0.fffffffffffffp-1022);
+        assertThat(value).isEqualTo(0x0.fffffffffffffp-1022);
     }
 
     @ParameterizedTest
@@ -427,7 +428,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, 0x0.0000000000001p-1022);
+        assertThat(value).isEqualTo(0x0.0000000000001p-1022);
     }
 
     @ParameterizedTest
@@ -444,7 +445,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, 0x1.fffffffffffffp+1023);
+        assertThat(value).isEqualTo(0x1.fffffffffffffp+1023);
     }
 
     @ParameterizedTest
@@ -470,7 +471,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, expected);
+        assertThat(value).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -496,7 +497,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, expected);
+        assertThat(value).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -520,7 +521,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, expected);
+        assertThat(value).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -536,7 +537,7 @@ public class NumberParsingTest {
         JsonValue value = parser.parse(json, json.length);
 
         // then
-        assertDouble(value, expected);
+        assertThat(value).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -558,7 +559,7 @@ public class NumberParsingTest {
                 JsonValue value = parser.parse(json, json.length);
 
                 // then
-                assertDouble(value, expected);
+                assertThat(value).isEqualTo(expected);
             }
         }
     }
@@ -585,15 +586,5 @@ public class NumberParsingTest {
         return Stream.of(testFiles)
                 .filter(File::isFile)
                 .toList();
-    }
-
-    private static void assertLong(JsonValue actual, long expected) {
-        assertThat(actual.isLong()).isTrue();
-        assertThat(actual.asLong()).isEqualTo(expected);
-    }
-
-    private static void assertDouble(JsonValue actual, Double expected) {
-        assertThat(actual.isDouble()).isTrue();
-        assertThat(actual.asDouble()).isEqualTo(expected);
     }
 }

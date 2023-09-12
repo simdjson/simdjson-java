@@ -1,10 +1,8 @@
 package org.simdjson;
 
-import jdk.incubator.vector.ByteVector;
-
 import java.util.Arrays;
 
-import static org.simdjson.JsonCharUtils.isStructuralOrWhitespace;
+import static org.simdjson.CharacterUtils.isStructuralOrWhitespace;
 import static org.simdjson.Tape.END_ARRAY;
 import static org.simdjson.Tape.END_OBJECT;
 import static org.simdjson.Tape.FALSE_VALUE;
@@ -12,44 +10,18 @@ import static org.simdjson.Tape.NULL_VALUE;
 import static org.simdjson.Tape.ROOT;
 import static org.simdjson.Tape.START_ARRAY;
 import static org.simdjson.Tape.START_OBJECT;
-import static org.simdjson.Tape.STRING;
 import static org.simdjson.Tape.TRUE_VALUE;
 
 class TapeBuilder {
 
     private static final byte SPACE = 0x20;
-    private static final byte BACKSLASH = '\\';
-    private static final byte QUOTE = '"';
-    private static final int BYTES_PROCESSED = StructuralIndexer.SPECIES.vectorByteSize();
-    private static final byte[] ESCAPE_MAP = new byte[]{
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x0.
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0x22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2f,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x4.
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x5c, 0, 0, 0, // 0x5.
-            0, 0, 0x08, 0, 0, 0, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0x0a, 0, // 0x6.
-            0, 0, 0x0d, 0, 0x09, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x7.
-
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    };
 
     private final Tape tape;
     private final byte[] stringBuffer;
     private final OpenContainer[] openContainers;
     private final int padding;
     private final NumberParser numberParser;
-
-    private int stringBufferIdx;
+    private final StringParser stringParser;
 
     TapeBuilder(int capacity, int depth, int padding) {
         this.tape = new Tape(capacity);
@@ -60,6 +32,7 @@ class TapeBuilder {
         }
         this.stringBuffer = new byte[capacity];
         this.numberParser = new NumberParser(tape);
+        this.stringParser = new StringParser(tape, stringBuffer);
     }
 
     void visitDocumentStart() {
@@ -193,56 +166,7 @@ class TapeBuilder {
     }
 
     private void visitString(byte[] buffer, int idx) {
-        tape.append(stringBufferIdx, STRING);
-        int src = idx + 1;
-        int dst = stringBufferIdx + Integer.BYTES;
-        while (true) {
-            ByteVector srcVec = ByteVector.fromArray(StructuralIndexer.SPECIES, buffer, src);
-            srcVec.intoArray(stringBuffer, dst);
-            long backslashBits = srcVec.eq(BACKSLASH).toLong();
-            long quoteBits = srcVec.eq(QUOTE).toLong();
-
-            if (hasQuoteFirst(backslashBits, quoteBits)) {
-                dst += Long.numberOfTrailingZeros(quoteBits);
-                break;
-            }
-            if (hasBackslash(backslashBits, quoteBits)) {
-                int backslashDist = Long.numberOfTrailingZeros(backslashBits);
-                byte escapeChar = buffer[src + backslashDist + 1];
-                if (escapeChar == 'u') {
-                    throw new UnsupportedOperationException("Support for unicode characters is not implemented yet.");
-                } else {
-                    stringBuffer[dst + backslashDist] = escape(escapeChar);
-                    src += backslashDist + 2;
-                    dst += backslashDist + 1;
-                }
-            } else {
-                src += BYTES_PROCESSED;
-                dst += BYTES_PROCESSED;
-            }
-        }
-        int len = dst - stringBufferIdx - Integer.BYTES;
-        IntegerUtils.toBytes(len, stringBuffer, stringBufferIdx);
-        stringBufferIdx = dst;
-    }
-
-    private byte escape(byte escapeChar) {
-        if (escapeChar < 0) {
-            throw new JsonParsingException("Escaped unexpected character: " + ((char) escapeChar));
-        }
-        byte escapeResult = ESCAPE_MAP[escapeChar];
-        if (escapeResult == 0) {
-            throw new JsonParsingException("Escaped unexpected character: " + ((char) escapeChar));
-        }
-        return escapeResult;
-    }
-
-    private boolean hasQuoteFirst(long backslashBits, long quoteBits) {
-        return ((backslashBits - 1) & quoteBits) != 0;
-    }
-
-    private boolean hasBackslash(long backslashBits, long quoteBits) {
-        return ((quoteBits - 1) & backslashBits) != 0;
+        stringParser.parseString(buffer, idx);
     }
 
     private void visitNumber(byte[] buffer, int idx) {
@@ -278,7 +202,7 @@ class TapeBuilder {
 
     void reset() {
         tape.reset();
-        stringBufferIdx = 0;
+        stringParser.reset();
     }
 
     JsonValue createJsonValue(byte[] buffer) {
