@@ -59,6 +59,6 @@ public class BenchmarkCorrectnessTest {
     private static byte[] loadTwitterJson() throws IOException {
         try (InputStream is = BenchmarkCorrectnessTest.class.getResourceAsStream("/twitter.json")) {
             return is.readAllBytes();
-        }
+        } 
     }
 }
