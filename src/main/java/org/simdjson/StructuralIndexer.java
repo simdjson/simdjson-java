@@ -1,11 +1,23 @@
 package org.simdjson;
 
 import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.VectorSpecies;
+import java.lang.invoke.MethodType;
 
-import static jdk.incubator.vector.ByteVector.SPECIES_256;
 import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
 
 class StructuralIndexer {
+
+    static final VectorSpecies<Byte> SPECIES;
+    static final int N_CHUNKS;
+
+    static {
+        SPECIES = ByteVector.SPECIES_PREFERRED;
+        N_CHUNKS = 64 / SPECIES.vectorByteSize();
+        if (SPECIES != ByteVector.SPECIES_256 && SPECIES != ByteVector.SPECIES_512) {
+            throw new IllegalArgumentException("Unsupported vector species: " + SPECIES);
+        }
+    }
 
     private final JsonStringScanner stringScanner;
     private final CharactersClassifier classifier;
@@ -22,29 +34,52 @@ class StructuralIndexer {
     }
 
     void step(byte[] buffer, int offset, int blockIndex) {
-        ByteVector chunk0 = ByteVector.fromArray(SPECIES_256, buffer, offset);
-        ByteVector chunk1 = ByteVector.fromArray(SPECIES_256, buffer, offset + 32);
+        switch (N_CHUNKS) {
+            case 1: step1(buffer, offset, blockIndex); break;
+            case 2: step2(buffer, offset, blockIndex); break;
+            default: throw new RuntimeException("Unsupported vector width: " + N_CHUNKS * 64);
+        }
+    }
 
+    private void step1(byte[] buffer, int offset, int blockIndex) {
+        ByteVector chunk0 = ByteVector.fromArray(ByteVector.SPECIES_512, buffer, offset);       
+        JsonStringBlock strings = stringScanner.next(chunk0);
+        JsonCharacterBlock characters = classifier.classify(chunk0);
+        long unescaped = lteq(chunk0, (byte) 0x1F);
+        finishStep(characters, strings, unescaped, blockIndex);
+    }
+
+    private void step2(byte[] buffer, int offset, int blockIndex) {
+        ByteVector chunk0 = ByteVector.fromArray(ByteVector.SPECIES_256, buffer, offset);
+        ByteVector chunk1 = ByteVector.fromArray(ByteVector.SPECIES_256, buffer, offset + 32);
         JsonStringBlock strings = stringScanner.next(chunk0, chunk1);
         JsonCharacterBlock characters = classifier.classify(chunk0, chunk1);
+        long unescaped = lteq(chunk0, chunk1, (byte) 0x1F);
+        finishStep(characters, strings, unescaped, blockIndex);
+    }
 
+    private void finishStep(JsonCharacterBlock characters, JsonStringBlock strings, long unescaped, int blockIndex) {
         long scalar = characters.scalar();
         long nonQuoteScalar = scalar & ~strings.quote();
         long followsNonQuoteScalar = nonQuoteScalar << 1 | prevScalar;
         prevScalar = nonQuoteScalar >>> 63;
-        long unescaped = lteq(chunk0, chunk1, (byte) 0x1F);
         // TODO: utf-8 validation
         long potentialScalarStart = scalar & ~followsNonQuoteScalar;
         long potentialStructuralStart = characters.op() | potentialScalarStart;
         bitIndexes.write(blockIndex, prevStructurals);
         prevStructurals = potentialStructuralStart & ~strings.stringTail();
         unescapedCharsError |= strings.nonQuoteInsideString(unescaped);
+    }        
+
+    private long lteq(ByteVector chunk0, byte scalar) {
+        long r = chunk0.compare(UNSIGNED_LE, scalar).toLong();
+        return r;
     }
 
     private long lteq(ByteVector chunk0, ByteVector chunk1, byte scalar) {
-        long rLo = chunk0.compare(UNSIGNED_LE, scalar).toLong();
-        long rHi = chunk1.compare(UNSIGNED_LE, scalar).toLong();
-        return rLo | (rHi << 32);
+        long r0 = chunk0.compare(UNSIGNED_LE, scalar).toLong();
+        long r1 = chunk1.compare(UNSIGNED_LE, scalar).toLong();
+        return r0 | (r1 << 32);
     }
 
     void finish(int blockIndex) {

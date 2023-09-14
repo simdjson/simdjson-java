@@ -16,12 +16,8 @@ class StringUtils {
         return new String(padded, UTF_8);
     }
 
-    static ByteVector chunk0(String str) {
-        return ByteVector.fromArray(ByteVector.SPECIES_256, toUtf8(str), 0);
-    }
-
-    static ByteVector chunk1(String str) {
-        return ByteVector.fromArray(ByteVector.SPECIES_256, toUtf8(str), 32);
+    static ByteVector chunk(String str, int n) {
+        return ByteVector.fromArray(StructuralIndexer.SPECIES, str.getBytes(UTF_8), n * StructuralIndexer.SPECIES.vectorByteSize());
     }
 
     static byte[] toUtf8(String str) {

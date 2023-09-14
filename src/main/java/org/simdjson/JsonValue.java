@@ -1,5 +1,6 @@
 package org.simdjson;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -60,7 +61,7 @@ public class JsonValue {
         return new ArrayIterator(tapeIdx);
     }
 
-    public Iterator<Map.Entry<CharSequence, JsonValue>> objectIterator() {
+    public Iterator<Map.Entry<String, JsonValue>> objectIterator() {
         return new ObjectIterator(tapeIdx);
     }
 
@@ -76,30 +77,32 @@ public class JsonValue {
         return tape.getType(tapeIdx) == TRUE_VALUE;
     }
 
-    public CharSequence asCharSequence() {
-        return asCharSequence(tapeIdx);
+    public String asString() {
+        return getString(tapeIdx);
     }
 
-    private CharSequence asCharSequence(int idx) {
-        int stringBufferIdx = (int) tape.getValue(idx);
+    private String getString(int tapeIdx) {
+        int stringBufferIdx = (int) tape.getValue(tapeIdx);
         int len = IntegerUtils.toInt(stringBuffer, stringBufferIdx);
-        return new StringView(stringBufferIdx + Integer.BYTES, len);
+        return new String(stringBuffer, stringBufferIdx + Integer.BYTES, len, UTF_8);
     }
 
     public JsonValue get(String name) {
-        Iterator<Map.Entry<CharSequence, JsonValue>> it = objectIterator();
-        while (it.hasNext()) {
-            Map.Entry<CharSequence, JsonValue> entry = it.next();
-            CharSequence key = entry.getKey();
-            if (CharSequence.compare(key, name) == 0) {
-                return entry.getValue();
+        byte[] bytes = name.getBytes(UTF_8);
+        int idx = tapeIdx + 1;
+        int endIdx = tape.getMatchingBraceIndex(tapeIdx) - 1;
+        while (idx < endIdx) {
+            int stringBufferIdx = (int) tape.getValue(idx);
+            int len = IntegerUtils.toInt(stringBuffer, stringBufferIdx);
+            int valIdx = tape.computeNextIndex(idx);
+            idx = tape.computeNextIndex(valIdx);
+            int stringBufferFromIdx = stringBufferIdx + Integer.BYTES;
+            int stringBufferToIdx = stringBufferFromIdx + len;
+            if (Arrays.compare(bytes, 0, bytes.length, stringBuffer, stringBufferFromIdx, stringBufferToIdx) == 0) {
+                return new JsonValue(tape, valIdx, stringBuffer, buffer);
             }
         }
         return null;
-    }
-
-    public String asString() {
-        return asCharSequence().toString();
     }
 
     public int getSize() {
@@ -119,7 +122,7 @@ public class JsonValue {
                 return String.valueOf(asBoolean());
             }
             case STRING -> {
-                return asCharSequence().toString();
+                return asString();
             }
             case NULL_VALUE -> {
                 return "null";
@@ -160,7 +163,7 @@ public class JsonValue {
         }
     }
 
-    private class ObjectIterator implements Iterator<Map.Entry<CharSequence, JsonValue>> {
+    private class ObjectIterator implements Iterator<Map.Entry<String, JsonValue>> {
 
         private final int endIdx;
 
@@ -177,8 +180,8 @@ public class JsonValue {
         }
 
         @Override
-        public Map.Entry<CharSequence, JsonValue> next() {
-            CharSequence key = asCharSequence(idx);
+        public Map.Entry<String, JsonValue> next() {
+            String key = getString(idx);
             idx = tape.computeNextIndex(idx);
             JsonValue value = new JsonValue(tape, idx, stringBuffer, buffer);
             idx = tape.computeNextIndex(idx);
@@ -186,18 +189,18 @@ public class JsonValue {
         }
     }
 
-    private static class ObjectField implements Map.Entry<CharSequence, JsonValue> {
+    private static class ObjectField implements Map.Entry<String, JsonValue> {
 
-        private final CharSequence key;
+        private final String key;
         private final JsonValue value;
 
-        ObjectField(CharSequence key, JsonValue value) {
+        ObjectField(String key, JsonValue value) {
             this.key = key;
             this.value = value;
         }
 
         @Override
-        public CharSequence getKey() {
+        public String getKey() {
             return key;
         }
 
@@ -209,37 +212,6 @@ public class JsonValue {
         @Override
         public JsonValue setValue(JsonValue value) {
             throw new UnsupportedOperationException("Object fields are immutable");
-        }
-    }
-
-    private class StringView implements CharSequence {
-
-        private final int startIdx;
-        private final int len;
-
-        StringView(int startIdx, int len) {
-            this.startIdx = startIdx;
-            this.len = len;
-        }
-
-        @Override
-        public int length() {
-            return len;
-        }
-
-        @Override
-        public char charAt(int index) {
-            return (char) stringBuffer[startIdx + index];
-        }
-
-        @Override
-        public CharSequence subSequence(int start, int end) {
-            return new StringView(startIdx + start, startIdx + end);
-        }
-
-        @Override
-        public String toString() {
-            return new String(stringBuffer, startIdx, len, UTF_8);
         }
     }
 }

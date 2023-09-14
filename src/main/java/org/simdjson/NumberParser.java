@@ -9,7 +9,7 @@ import static java.lang.Long.numberOfLeadingZeros;
 import static java.lang.Long.remainderUnsigned;
 import static java.lang.Math.abs;
 import static java.lang.Math.unsignedMultiplyHigh;
-import static org.simdjson.JsonCharUtils.isStructuralOrWhitespace;
+import static org.simdjson.CharacterUtils.isStructuralOrWhitespace;
 import static org.simdjson.NumberParserTables.NUMBER_OF_ADDITIONAL_DIGITS_AFTER_LEFT_SHIFT;
 import static org.simdjson.NumberParserTables.POWERS_OF_FIVE;
 import static org.simdjson.NumberParserTables.POWER_OF_FIVE_DIGITS;

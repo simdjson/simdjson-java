@@ -4,8 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.simdjson.StringUtils.chunk0;
-import static org.simdjson.StringUtils.chunk1;
+import static org.simdjson.StringUtils.chunk;
 
 public class CharactersClassifierTest {
 
@@ -16,7 +15,7 @@ public class CharactersClassifierTest {
         String str = "a{bc}1:2,3[efg]aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
         // when
-        JsonCharacterBlock block = classifier.classify(chunk0(str), chunk1(str));
+        JsonCharacterBlock block = classify(classifier, str);
 
         // then
         assertThat(block.op()).isEqualTo(0x4552);
@@ -39,7 +38,7 @@ public class CharactersClassifierTest {
         }, UTF_8);
 
         // when
-        JsonCharacterBlock block = classifier.classify(chunk0(str), chunk1(str));
+        JsonCharacterBlock block = classify(classifier, str);
 
         // then
         assertThat(block.op()).isEqualTo(0x28);
@@ -53,10 +52,19 @@ public class CharactersClassifierTest {
         String str = "a bc\t1\n2\r3efgaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
         // when
-        JsonCharacterBlock block = classifier.classify(chunk0(str), chunk1(str));
+        JsonCharacterBlock block = classify(classifier, str);
 
         // then
         assertThat(block.whitespace()).isEqualTo(0x152);
         assertThat(block.op()).isEqualTo(0);
     }
+
+    private JsonCharacterBlock classify(CharactersClassifier classifier, String str) {
+        return switch (StructuralIndexer.N_CHUNKS) {
+            case 1 -> classifier.classify(chunk(str, 0));
+            case 2 -> classifier.classify(chunk(str, 0), chunk(str, 1));
+            default -> throw new RuntimeException("Unsupported chunk count: " + StructuralIndexer.N_CHUNKS);
+        };
+    }
+
 }
