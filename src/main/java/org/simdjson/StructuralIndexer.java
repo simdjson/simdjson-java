@@ -12,7 +12,13 @@ class StructuralIndexer {
     static final int N_CHUNKS;
 
     static {
-        SPECIES = ByteVector.SPECIES_PREFERRED;
+        String species = System.getProperty("org.simdjson.species", "preferred");
+        SPECIES = switch(species) {
+            case "preferred" -> ByteVector.SPECIES_PREFERRED;
+            case "512" -> ByteVector.SPECIES_512;      
+            case "256" -> ByteVector.SPECIES_256;
+            default -> throw new IllegalArgumentException("Unsupported vector species: " + species);
+        };              
         N_CHUNKS = 64 / SPECIES.vectorByteSize();
         if (SPECIES != ByteVector.SPECIES_256 && SPECIES != ByteVector.SPECIES_512) {
             throw new IllegalArgumentException("Unsupported vector species: " + SPECIES);

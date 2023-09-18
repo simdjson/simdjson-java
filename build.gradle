@@ -70,34 +70,35 @@ tasks.register('downloadTestData') {
     }
 }
 
-tasks.register('testPreferred', Test) {
+tasks.register('test256', Test) {
     dependsOn downloadTestData
     useJUnitPlatform()
     jvmArgs += [
             '--add-modules', 'jdk.incubator.vector',
-            '-Xmx2g'
+            '-Xmx2g',
+            '-Dorg.simdjson.species=256'
     ]
     testLogging {
         events 'PASSED', 'SKIPPED', 'FAILED', 'STANDARD_OUT', 'STANDARD_ERROR'
     }
 }
 
-tasks.register('test256', Test) {
+tasks.register('test512', Test) {
     dependsOn downloadTestData
     useJUnitPlatform()
-    onlyIf() {
-        ByteVector.SPECIES_PREFERRED == ByteVector.SPECIES_512 
-    }
     jvmArgs += [
             '--add-modules', 'jdk.incubator.vector',
             '-Xmx2g',
-            '-XX:UseAVX=2'
+            '-Dorg.simdjson.species=512'
     ]
+    testLogging {
+        events 'PASSED', 'SKIPPED', 'FAILED', 'STANDARD_OUT', 'STANDARD_ERROR'
+    }
 }
 
 test {
-    dependsOn 'testPreferred'
     dependsOn 'test256'
+    dependsOn 'test512'
 }
 
 tasks.withType(JmhBytecodeGeneratorTask).configureEach {
