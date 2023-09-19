@@ -2,6 +2,7 @@ import me.champeau.jmh.JmhBytecodeGeneratorTask
 import org.gradle.internal.os.OperatingSystem
 import org.ajoberstar.grgit.Grgit
 import java.time.Duration
+import jdk.incubator.vector.ByteVector
 
 plugins {
     id 'java'
@@ -69,16 +70,35 @@ tasks.register('downloadTestData') {
     }
 }
 
-test {
+tasks.register('test256', Test) {
     dependsOn downloadTestData
     useJUnitPlatform()
     jvmArgs += [
             '--add-modules', 'jdk.incubator.vector',
-            '-Xmx2g'
+            '-Xmx2g',
+            '-Dorg.simdjson.species=256'
     ]
     testLogging {
         events 'PASSED', 'SKIPPED', 'FAILED', 'STANDARD_OUT', 'STANDARD_ERROR'
     }
+}
+
+tasks.register('test512', Test) {
+    dependsOn downloadTestData
+    useJUnitPlatform()
+    jvmArgs += [
+            '--add-modules', 'jdk.incubator.vector',
+            '-Xmx2g',
+            '-Dorg.simdjson.species=512'
+    ]
+    testLogging {
+        events 'PASSED', 'SKIPPED', 'FAILED', 'STANDARD_OUT', 'STANDARD_ERROR'
+    }
+}
+
+test {
+    dependsOn 'test256'
+    dependsOn 'test512'
 }
 
 tasks.withType(JmhBytecodeGeneratorTask).configureEach {
