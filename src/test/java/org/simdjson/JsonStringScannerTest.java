@@ -5,8 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.simdjson.StringUtils.chunk;
-import static org.simdjson.StringUtils.padWithSpaces;
+import static org.simdjson.TestUtils.chunk;
+import static org.simdjson.TestUtils.padWithSpaces;
 
 public class JsonStringScannerTest {
 

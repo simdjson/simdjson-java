@@ -7,7 +7,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.simdjson.JsonValueAssert.assertThat;
-import static org.simdjson.StringUtils.toUtf8;
+import static org.simdjson.TestUtils.toUtf8;
 
 public class ObjectParsingTest {
 

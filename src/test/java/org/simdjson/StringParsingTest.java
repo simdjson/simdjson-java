@@ -15,7 +15,7 @@ import static org.apache.commons.text.StringEscapeUtils.unescapeJava;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.simdjson.JsonValueAssert.assertThat;
-import static org.simdjson.StringUtils.toUtf8;
+import static org.simdjson.TestUtils.toUtf8;
 
 public class StringParsingTest {
 
