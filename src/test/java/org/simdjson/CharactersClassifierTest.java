@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.simdjson.StringUtils.chunk;
+import static org.simdjson.TestUtils.chunk;
 
 public class CharactersClassifierTest {
 

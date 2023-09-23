@@ -1,7 +1,6 @@
 package org.simdjson;
 
 import jdk.incubator.vector.ByteVector;
-import jdk.incubator.vector.VectorSpecies;
 
 class JsonStringScanner {
 
@@ -59,7 +58,10 @@ class JsonStringScanner {
         long oddSequenceStarts = backslash & ODD_BITS_MASK & ~followsEscape;
 
         long sequencesStartingOnEvenBits = oddSequenceStarts + backslash;
-        prevEscaped = ((oddSequenceStarts ^ sequencesStartingOnEvenBits) & (backslash ^ sequencesStartingOnEvenBits)) >>> 63;
+        // Here, we check if the unsigned addition above caused an overflow. If that's the case, we store 1 in prevEscaped.
+        // The formula used to detect overflow was taken from 'Hacker's Delight, Second Edition' by Henry S. Warren, Jr.,
+        // Chapter 2-13.
+        prevEscaped = ((oddSequenceStarts >>> 1) + (backslash >>> 1) + ((oddSequenceStarts & backslash) & 1)) >>> 63;
 
         long invertMask = sequencesStartingOnEvenBits << 1;
         return (EVEN_BITS_MASK ^ invertMask) & followsEscape;

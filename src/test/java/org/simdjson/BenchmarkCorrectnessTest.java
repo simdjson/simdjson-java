@@ -5,14 +5,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.simdjson.StringUtils.padWithSpaces;
-import static org.simdjson.StringUtils.toUtf8;
+import static org.simdjson.TestUtils.loadTestFile;
+import static org.simdjson.TestUtils.padWithSpaces;
+import static org.simdjson.TestUtils.toUtf8;
 
 public class BenchmarkCorrectnessTest {
 
@@ -21,7 +21,7 @@ public class BenchmarkCorrectnessTest {
         // given
         SimdJsonParser parser = new SimdJsonParser();
         Set<String> defaultUsers = new HashSet<>();
-        byte[] json = loadTwitterJson();
+        byte[] json = loadTestFile("/twitter.json");
 
         // when
         JsonValue simdJsonValue = parser.parse(json, json.length);
@@ -54,11 +54,5 @@ public class BenchmarkCorrectnessTest {
 
         // then
         assertThat(tape.getDouble(0)).isEqualTo(expected);
-    }
-
-    private static byte[] loadTwitterJson() throws IOException {
-        try (InputStream is = BenchmarkCorrectnessTest.class.getResourceAsStream("/twitter.json")) {
-            return is.readAllBytes();
-        } 
     }
 }

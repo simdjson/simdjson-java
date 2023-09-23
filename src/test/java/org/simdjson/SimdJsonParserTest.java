@@ -4,13 +4,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.IOException;
 import java.util.Iterator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.simdjson.JsonValueAssert.assertThat;
-import static org.simdjson.StringUtils.toUtf8;
+import static org.simdjson.TestUtils.loadTestFile;
+import static org.simdjson.TestUtils.toUtf8;
 
 public class SimdJsonParserTest {
 
@@ -290,5 +292,32 @@ public class SimdJsonParserTest {
         // then
         assertThat(jsonValue.isArray()).isTrue();
         assertThat(jsonValue.getSize()).isEqualTo(0xFFFFFF);
+    }
+
+    @Test
+    public void issue26DeepBench() throws IOException {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = loadTestFile("/deep_bench.json");
+
+        // when
+        JsonValue jsonValue = parser.parse(json, json.length);
+
+        // then
+        assertThat(jsonValue.isObject()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/wide_bench.json", "/deep_bench.json"})
+    public void issue26(String file) throws IOException {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = loadTestFile(file);
+
+        // when
+        JsonValue jsonValue = parser.parse(json, json.length);
+
+        // then
+        assertThat(jsonValue.isObject()).isTrue();
     }
 }
