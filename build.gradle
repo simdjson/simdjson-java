@@ -47,6 +47,7 @@ dependencies {
     jmhImplementation group: 'com.alibaba.fastjson2', name: 'fastjson2', version: '2.0.35'
     jmhImplementation group: 'com.jsoniter', name: 'jsoniter', version: '0.9.23'
     jmhImplementation group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-core_2.13', version: jsoniterScalaVersion
+    jmhImplementation group: 'com.google.guava', name: 'guava', version: '32.1.2-jre'
     compileOnly group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-macros_2.13', version: jsoniterScalaVersion
 
     testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.24.2'
