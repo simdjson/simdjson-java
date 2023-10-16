@@ -31,7 +31,8 @@ repositories {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(20)
+        languageVersion = JavaLanguageVersion.of(18)
+        vendor = JvmVendorSpec.ADOPTIUM
     }
     withJavadocJar()
     withSourcesJar()

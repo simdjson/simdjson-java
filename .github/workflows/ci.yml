@@ -6,16 +6,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        version: [ 18, 19, 20, 21 ]
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: gradle/wrapper-validation-action@v1
 
-      - name: Set up JDK 20
+      - name: Set up JDK ${{ matrix.version }}
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 20
+          java-version: ${{ matrix.version }}
 
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
