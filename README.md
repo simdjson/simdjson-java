@@ -47,7 +47,7 @@ Please remember about specifying the desired version.
 Note that simdjson-java follows the [SemVer specification](https://semver.org/), which means, for example, that a major 
 version of zero indicates initial development, so the library's API should not be considered stable.
 
-We require Java 20 or better.
+We require Java 18 or better.
 
 ## Benchmarks
 
@@ -87,4 +87,4 @@ To reproduce the benchmark results, execute the following command:
 
 ```./gradlew jmh -Pjmh.includes='.*ParseAndSelectBenchmark.*'```
 
-The benchmark may take several minutes. Remember that you need Java 20 or better.
+The benchmark may take several minutes. Remember that you need Java 18 or better.
