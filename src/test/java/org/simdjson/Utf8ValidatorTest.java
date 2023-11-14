@@ -13,7 +13,7 @@ import java.util.Objects;
 import static org.assertj.core.api.Assertions.*;
 
 class Utf8ValidatorTest {
-    private static final VectorSpecies<Byte> VECTOR_SPECIES = ByteVector.SPECIES_256;
+    private static final VectorSpecies<Byte> VECTOR_SPECIES = StructuralIndexer.SPECIES;
 
 
     /* ASCII / 1 BYTE TESTS */
@@ -482,14 +482,14 @@ class Utf8ValidatorTest {
     @ParameterizedTest
     @ValueSource(strings = {"/twitter.json", "/nhkworld.json"})
     void validate_utf8InputFiles_valid(String inputFilePath) throws IOException {
-        byte[] inputBytes = Objects.requireNonNull(Utf8ValidatorTest.class.getResourceAsStream(inputFilePath)).readAllBytes();
+        byte[] inputBytes = TestUtils.loadTestFile(inputFilePath);
         SimdJsonParser parser = new SimdJsonParser();
         assertThatCode(() -> parser.parse(inputBytes, inputBytes.length)).doesNotThrowAnyException();
     }
 
     @Test
     void validate_utf8InputFile_invalid() throws IOException {
-        byte[] inputBytes = Objects.requireNonNull(Utf8ValidatorTest.class.getResourceAsStream("/malformed.txt")).readAllBytes();
+        byte[] inputBytes = TestUtils.loadTestFile("/malformed.txt");
         SimdJsonParser parser = new SimdJsonParser();
         assertThatExceptionOfType(JsonParsingException.class)
                 .isThrownBy(() -> parser.parse(inputBytes, inputBytes.length))

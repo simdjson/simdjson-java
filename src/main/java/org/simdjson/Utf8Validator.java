@@ -12,14 +12,13 @@ public class Utf8Validator {
     private static final ByteVector LOW_NIBBLE_MASK = ByteVector.broadcast(VECTOR_SPECIES, 0b0000_1111);
     private static final ByteVector ALL_ASCII_MASK = ByteVector.broadcast(VECTOR_SPECIES, (byte) 0b1000_0000);
 
-
     /**
      * Validate the input bytes are valid UTF8
      *
      * @param inputBytes the input bytes to validate
      * @throws JsonParsingException if the input is not valid UTF8
      */
-    public static void validate(byte[] inputBytes) {
+    static void validate(byte[] inputBytes) {
         long previousIncomplete = 0;
         long errors = 0;
         int previousFourUtf8Bytes = 0;
@@ -46,9 +45,7 @@ public class Utf8Validator {
         // if the input file doesn't align with the vector width, pad the missing bytes with zero
         VectorMask<Byte> remainingBytes = VECTOR_SPECIES.indexInRange(idx, inputBytes.length);
         ByteVector lastVectorChunk = ByteVector.fromArray(VECTOR_SPECIES, inputBytes, idx, remainingBytes);
-        if (isAscii(lastVectorChunk)) {
-            errors |= previousIncomplete;
-        } else {
+        if (!isAscii(lastVectorChunk)) {
             previousIncomplete = isIncomplete(lastVectorChunk);
 
             var fourBytesPrevious = fourBytesPreviousSlice(lastVectorChunk, previousFourUtf8Bytes);
@@ -96,9 +93,9 @@ public class Utf8Validator {
         // low nibbles of the shifted input (e.g. 0xC3 & 0xF = 0x3)
         ByteVector byte1LowNibbles = oneBytePrevious.and(LOW_NIBBLE_MASK);
 
-        ByteVector byte1HighState = byte2HighNibbles.selectFrom(LookupTable.byte2High);
-        ByteVector byte1LowState = byte1HighNibbles.selectFrom(LookupTable.byte1High);
-        ByteVector byte2HighState = byte1LowNibbles.selectFrom(LookupTable.byte1Low);
+        ByteVector byte1HighState = byte1HighNibbles.selectFrom(LookupTable.byte1High);
+        ByteVector byte1LowState = byte1LowNibbles.selectFrom(LookupTable.byte1Low);
+        ByteVector byte2HighState = byte2HighNibbles.selectFrom(LookupTable.byte2High);
 
         return byte1HighState.and(byte1LowState).and(byte2HighState);
     }
@@ -131,12 +128,12 @@ public class Utf8Validator {
         return ByteVector.fromArray(VECTOR_SPECIES, eofArray, 0);
     }
 
-    protected static long isIncomplete(ByteVector utf8Vector) {
+    private static long isIncomplete(ByteVector utf8Vector) {
         return utf8Vector.compare(VectorOperators.UNSIGNED_GE, INCOMPLETE_CHECK).toLong();
     }
 
     // ASCII will never exceed 01111_1111
-    protected static boolean isAscii(ByteVector utf8Vector) {
+    private static boolean isAscii(ByteVector utf8Vector) {
         return utf8Vector.and(ALL_ASCII_MASK).compare(VectorOperators.EQ, 0).allTrue();
     }
 
