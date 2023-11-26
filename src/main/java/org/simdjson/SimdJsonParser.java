@@ -26,6 +26,7 @@ public class SimdJsonParser {
     }
 
     public JsonValue parse(byte[] buffer, int len) {
+        stage0(buffer);
         byte[] padded = padIfNeeded(buffer, len);
         reset(padded, len);
         stage1(padded);
@@ -45,6 +46,10 @@ public class SimdJsonParser {
         reader.reset(buffer, len);
         bitIndexes.reset();
         jsonIterator.reset();
+    }
+
+    private void stage0(byte[] buffer) {
+        Utf8Validator.validate(buffer);
     }
 
     private void stage1(byte[] buffer) {
