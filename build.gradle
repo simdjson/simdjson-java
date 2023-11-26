@@ -14,15 +14,15 @@ plugins {
     id 'signing'
 }
 
-group = 'org.simdjson'
-version = scmVersion.version
-
 scmVersion {
     versionCreator('versionWithBranch')
     tag {
         prefix = ''
     }
 }
+
+group = 'org.simdjson'
+version = scmVersion.version
 
 repositories {
     mavenCentral()

@@ -46,7 +46,7 @@ jobs:
           GPG_PRIVATE_KEY_PASSWORD: ${{ secrets.GPG_PRIVATE_KEY_PASSWORD }}
 
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && !endsWith(steps.release.outputs.released_version, '-SNAPSHOT')
         run: gh release create "${{ steps.release.outputs.released_version }}" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
