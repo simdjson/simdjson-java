@@ -43,12 +43,12 @@ java {
 
 ext {
     junitVersion = '5.9.1'
-    jsoniterScalaVersion = '2.23.2'
+    jsoniterScalaVersion = '2.24.4'
 }
 
 dependencies {
-    jmhImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
-    jmhImplementation group: 'com.alibaba.fastjson2', name: 'fastjson2', version: '2.0.35'
+    jmhImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.16.0'
+    jmhImplementation group: 'com.alibaba.fastjson2', name: 'fastjson2', version: '2.0.42'
     jmhImplementation group: 'com.jsoniter', name: 'jsoniter', version: '0.9.23'
     jmhImplementation group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-core_2.13', version: jsoniterScalaVersion
     compileOnly group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-macros_2.13', version: jsoniterScalaVersion
