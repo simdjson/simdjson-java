@@ -2,7 +2,6 @@ package org.simdjson;
 
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.VectorSpecies;
-import java.lang.invoke.MethodType;
 
 import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
 
