@@ -1,27 +1,43 @@
 package org.simdjson;
 
 import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
-import java.lang.invoke.MethodType;
 
 import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
 
 class StructuralIndexer {
 
-    static final VectorSpecies<Byte> SPECIES;
+    static final VectorSpecies<Integer> INT_SPECIES;
+    static final VectorSpecies<Byte> BYTE_SPECIES;
     static final int N_CHUNKS;
 
     static {
         String species = System.getProperty("org.simdjson.species", "preferred");
-        SPECIES = switch(species) {
-            case "preferred" -> ByteVector.SPECIES_PREFERRED;
-            case "512" -> ByteVector.SPECIES_512;      
-            case "256" -> ByteVector.SPECIES_256;
+        switch (species) {
+            case "preferred" -> {
+                BYTE_SPECIES = ByteVector.SPECIES_PREFERRED;
+                INT_SPECIES = IntVector.SPECIES_PREFERRED;
+            }
+            case "512" -> {
+                BYTE_SPECIES = ByteVector.SPECIES_512;
+                INT_SPECIES = IntVector.SPECIES_512;
+            }
+            case "256" -> {
+                BYTE_SPECIES = ByteVector.SPECIES_256;
+                INT_SPECIES = IntVector.SPECIES_256;
+            }
             default -> throw new IllegalArgumentException("Unsupported vector species: " + species);
-        };              
-        N_CHUNKS = 64 / SPECIES.vectorByteSize();
-        if (SPECIES != ByteVector.SPECIES_256 && SPECIES != ByteVector.SPECIES_512) {
-            throw new IllegalArgumentException("Unsupported vector species: " + SPECIES);
+        }
+        N_CHUNKS = 64 / BYTE_SPECIES.vectorByteSize();
+        assertSupportForSpecies(BYTE_SPECIES);
+        assertSupportForSpecies(INT_SPECIES);
+    }
+
+    private static void assertSupportForSpecies(VectorSpecies<?> species) {
+        if (species.vectorShape() != VectorShape.S_256_BIT && species.vectorShape() != VectorShape.S_512_BIT) {
+            throw new IllegalArgumentException("Unsupported vector species: " + species);
         }
     }
 
@@ -48,7 +64,7 @@ class StructuralIndexer {
     }
 
     private void step1(byte[] buffer, int offset, int blockIndex) {
-        ByteVector chunk0 = ByteVector.fromArray(ByteVector.SPECIES_512, buffer, offset);       
+        ByteVector chunk0 = ByteVector.fromArray(ByteVector.SPECIES_512, buffer, offset);
         JsonStringBlock strings = stringScanner.next(chunk0);
         JsonCharacterBlock characters = classifier.classify(chunk0);
         long unescaped = lteq(chunk0, (byte) 0x1F);
@@ -75,7 +91,7 @@ class StructuralIndexer {
         bitIndexes.write(blockIndex, prevStructurals);
         prevStructurals = potentialStructuralStart & ~strings.stringTail();
         unescapedCharsError |= strings.nonQuoteInsideString(unescaped);
-    }        
+    }
 
     private long lteq(ByteVector chunk0, byte scalar) {
         long r = chunk0.compare(UNSIGNED_LE, scalar).toLong();

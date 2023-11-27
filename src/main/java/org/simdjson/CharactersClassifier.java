@@ -9,14 +9,14 @@ class CharactersClassifier {
 
     private static final ByteVector WHITESPACE_TABLE = 
         ByteVector.fromArray(
-            StructuralIndexer.SPECIES, 
-            repeat(new byte[]{' ', 100, 100, 100, 17, 100, 113, 2, 100, '\t', '\n', 112, 100, '\r', 100, 100}, StructuralIndexer.SPECIES.vectorByteSize() / 4), 
+            StructuralIndexer.BYTE_SPECIES,
+            repeat(new byte[]{' ', 100, 100, 100, 17, 100, 113, 2, 100, '\t', '\n', 112, 100, '\r', 100, 100}, StructuralIndexer.BYTE_SPECIES.vectorByteSize() / 4),
             0);
 
     private static final ByteVector OP_TABLE = 
         ByteVector.fromArray(
-            StructuralIndexer.SPECIES, 
-            repeat(new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ':', '{', ',', '}', 0, 0}, StructuralIndexer.SPECIES.vectorByteSize() / 4), 
+            StructuralIndexer.BYTE_SPECIES,
+            repeat(new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ':', '{', ',', '}', 0, 0}, StructuralIndexer.BYTE_SPECIES.vectorByteSize() / 4),
             0);
 
     private static byte[] repeat(byte[] array, int n) {

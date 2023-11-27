@@ -14,8 +14,8 @@ class JsonStringScanner {
     private long prevEscaped = 0;
 
     JsonStringScanner() {
-        this.backslashMask = ByteVector.broadcast(StructuralIndexer.SPECIES, (byte) '\\');
-        this.quoteMask = ByteVector.broadcast(StructuralIndexer.SPECIES, (byte) '"');
+        this.backslashMask = ByteVector.broadcast(StructuralIndexer.BYTE_SPECIES, (byte) '\\');
+        this.quoteMask = ByteVector.broadcast(StructuralIndexer.BYTE_SPECIES, (byte) '"');
     }
 
     JsonStringBlock next(ByteVector chunk0) {
