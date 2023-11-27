@@ -10,7 +10,7 @@ class StringParser {
 
     private static final byte BACKSLASH = '\\';
     private static final byte QUOTE = '"';
-    private static final int BYTES_PROCESSED = StructuralIndexer.SPECIES.vectorByteSize();
+    private static final int BYTES_PROCESSED = StructuralIndexer.BYTE_SPECIES.vectorByteSize();
     private static final int MIN_HIGH_SURROGATE = 0xD800;
     private static final int MAX_HIGH_SURROGATE = 0xDBFF;
     private static final int MIN_LOW_SURROGATE = 0xDC00;
@@ -31,7 +31,7 @@ class StringParser {
         int src = idx + 1;
         int dst = stringBufferIdx + Integer.BYTES;
         while (true) {
-            ByteVector srcVec = ByteVector.fromArray(StructuralIndexer.SPECIES, buffer, src);
+            ByteVector srcVec = ByteVector.fromArray(StructuralIndexer.BYTE_SPECIES, buffer, src);
             srcVec.intoArray(stringBuffer, dst);
             long backslashBits = srcVec.eq(BACKSLASH).toLong();
             long quoteBits = srcVec.eq(QUOTE).toLong();

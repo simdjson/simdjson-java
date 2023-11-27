@@ -4,11 +4,12 @@ import jdk.incubator.vector.*;
 
 import java.util.Arrays;
 
-public class Utf8Validator {
-    private static final VectorSpecies<Byte> VECTOR_SPECIES = ByteVector.SPECIES_256;
+class Utf8Validator {
+
+    private static final VectorSpecies<Byte> VECTOR_SPECIES = StructuralIndexer.BYTE_SPECIES;
     private static final ByteVector INCOMPLETE_CHECK = getIncompleteCheck();
-    private static final VectorShuffle<Integer> SHIFT_FOUR_BYTES_FORWARD = VectorShuffle.iota(IntVector.SPECIES_256,
-            IntVector.SPECIES_256.elementSize() - 1, 1, true);
+    private static final VectorShuffle<Integer> SHIFT_FOUR_BYTES_FORWARD = VectorShuffle.iota(StructuralIndexer.INT_SPECIES,
+            StructuralIndexer.INT_SPECIES.elementSize() - 1, 1, true);
     private static final ByteVector LOW_NIBBLE_MASK = ByteVector.broadcast(VECTOR_SPECIES, 0b0000_1111);
     private static final ByteVector ALL_ASCII_MASK = ByteVector.broadcast(VECTOR_SPECIES, (byte) 0b1000_0000);
 
@@ -39,7 +40,7 @@ public class Utf8Validator {
 
                 errors |= secondCheck.compare(VectorOperators.NE, 0).toLong();
             }
-            previousFourUtf8Bytes = utf8Vector.reinterpretAsInts().lane(IntVector.SPECIES_256.length() - 1);
+            previousFourUtf8Bytes = utf8Vector.reinterpretAsInts().lane(StructuralIndexer.INT_SPECIES.length() - 1);
         }
 
         // if the input file doesn't align with the vector width, pad the missing bytes with zero

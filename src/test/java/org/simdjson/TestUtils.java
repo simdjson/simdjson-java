@@ -19,7 +19,7 @@ class TestUtils {
     }
 
     static ByteVector chunk(String str, int n) {
-        return ByteVector.fromArray(StructuralIndexer.SPECIES, str.getBytes(UTF_8), n * StructuralIndexer.SPECIES.vectorByteSize());
+        return ByteVector.fromArray(StructuralIndexer.BYTE_SPECIES, str.getBytes(UTF_8), n * StructuralIndexer.BYTE_SPECIES.vectorByteSize());
     }
 
     static byte[] toUtf8(String str) {
