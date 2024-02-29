@@ -3,48 +3,76 @@ package org.simdjson;
 import jdk.incubator.vector.ByteVector;
 
 class JsonStringScanner {
-
     private static final long EVEN_BITS_MASK = 0x5555555555555555L;
     private static final long ODD_BITS_MASK = ~EVEN_BITS_MASK;
 
-    private final ByteVector backslashMask;
-    private final ByteVector quoteMask;
+    private static final ByteVector BACKSLASH_MASK_128 = ByteVector.broadcast(ByteVector.SPECIES_128, (byte) '\\');
+    private static final ByteVector QUOTE_MASK_128 = ByteVector.broadcast(ByteVector.SPECIES_128, (byte) '"');
+
+    private static final ByteVector BACKSLASH_MASK_256 = ByteVector.broadcast(ByteVector.SPECIES_256, (byte) '\\');
+    private static final ByteVector QUOTE_MASK_256 = ByteVector.broadcast(ByteVector.SPECIES_256, (byte) '"');
+
+    private static final ByteVector BACKSLASH_MASK_512 = ByteVector.broadcast(ByteVector.SPECIES_512, (byte) '\\');
+    private static final ByteVector QUOTE_MASK_512 = ByteVector.broadcast(ByteVector.SPECIES_512, (byte) '"');
+
 
     private long prevInString = 0;
     private long prevEscaped = 0;
 
     JsonStringScanner() {
-        this.backslashMask = ByteVector.broadcast(StructuralIndexer.BYTE_SPECIES, (byte) '\\');
-        this.quoteMask = ByteVector.broadcast(StructuralIndexer.BYTE_SPECIES, (byte) '"');
     }
 
     JsonStringBlock next(ByteVector chunk0) {
-        long backslash = eq(chunk0, backslashMask);
-        long escaped = findEscaped(backslash);
-        long quote = eq(chunk0, quoteMask) & ~escaped;
-        long inString = prefixXor(quote) ^ prevInString;
+        assert chunk0.species() == ByteVector.SPECIES_512;
+        var backslash = eq(chunk0, BACKSLASH_MASK_512);
+        var escaped = findEscaped(backslash);
+        var quote = eq(chunk0, QUOTE_MASK_512) & ~escaped;
+        var inString = prefixXor(quote) ^ prevInString;
         prevInString = inString >> 63;
         return new JsonStringBlock(quote, inString);
     }
 
     JsonStringBlock next(ByteVector chunk0, ByteVector chunk1) {
-        long backslash = eq(chunk0, chunk1, backslashMask);
-        long escaped = findEscaped(backslash);
-        long quote = eq(chunk0, chunk1, quoteMask) & ~escaped;
-        long inString = prefixXor(quote) ^ prevInString;
+        assert chunk0.species() == ByteVector.SPECIES_256;
+        assert chunk1.species() == ByteVector.SPECIES_256;
+        var backslash = eq(chunk0, chunk1, BACKSLASH_MASK_256);
+        var escaped = findEscaped(backslash);
+        var quote = eq(chunk0, chunk1, QUOTE_MASK_256) & ~escaped;
+        var inString = prefixXor(quote) ^ prevInString;
         prevInString = inString >> 63;
         return new JsonStringBlock(quote, inString);
     }
 
-    private long eq(ByteVector chunk0, ByteVector mask) {
+    JsonStringBlock next(ByteVector chunk0, ByteVector chunk1, ByteVector chunk2, ByteVector chunk3) {
+        assert chunk0.species() == ByteVector.SPECIES_128;
+        assert chunk1.species() == ByteVector.SPECIES_128;
+        assert chunk2.species() == ByteVector.SPECIES_128;
+        assert chunk3.species() == ByteVector.SPECIES_128;
+        var backslash = eq(chunk0, chunk1, chunk2, chunk3, BACKSLASH_MASK_128);
+        var escaped = findEscaped(backslash);
+        var quote = eq(chunk0, chunk1, chunk2, chunk3, QUOTE_MASK_128) & ~escaped;
+        var inString = prefixXor(quote) ^ prevInString;
+        prevInString = inString >> 63;
+        return new JsonStringBlock(quote, inString);
+    }
+
+    private static long eq(ByteVector chunk0, ByteVector mask) {
         long r = chunk0.eq(mask).toLong();
         return r;
     }
 
-    private long eq(ByteVector chunk0, ByteVector chunk1, ByteVector mask) {
+    private static long eq(ByteVector chunk0, ByteVector chunk1, ByteVector mask) {
         long r0 = chunk0.eq(mask).toLong();
         long r1 = chunk1.eq(mask).toLong();
         return r0 | (r1 << 32);
+    }
+
+    private static long eq(ByteVector chunk0, ByteVector chunk1, ByteVector chunk2, ByteVector chunk3, ByteVector mask) {
+        long r0 = chunk0.eq(mask).toLong();
+        long r1 = chunk1.eq(mask).toLong();
+        long r2 = chunk2.eq(mask).toLong();
+        long r3 = chunk3.eq(mask).toLong();
+        return (r0 & 0xFFFFL) | ((r1 & 0xFFFFL) << 16) | ((r2 & 0xFFFFL) << 32) | ((r3 & 0xFFFFL) << 48);
     }
 
     private long findEscaped(long backslash) {
@@ -88,3 +116,4 @@ class JsonStringScanner {
         }
     }
 }
+

@@ -63,6 +63,7 @@ public class CharactersClassifierTest {
         return switch (StructuralIndexer.N_CHUNKS) {
             case 1 -> classifier.classify(chunk(str, 0));
             case 2 -> classifier.classify(chunk(str, 0), chunk(str, 1));
+            case 4 -> classifier.classify(chunk(str, 0), chunk(str, 1), chunk(str, 2), chunk(str, 3));
             default -> throw new RuntimeException("Unsupported chunk count: " + StructuralIndexer.N_CHUNKS);
         };
     }

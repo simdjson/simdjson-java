@@ -75,6 +75,19 @@ tasks.register('downloadTestData') {
     }
 }
 
+tasks.register('test128', Test) {
+    dependsOn downloadTestData
+    useJUnitPlatform()
+    jvmArgs += [
+            '--add-modules', 'jdk.incubator.vector',
+            '-Xmx2g',
+            '-Dorg.simdjson.species=128'
+    ]
+    testLogging {
+        events 'PASSED', 'SKIPPED', 'FAILED', 'STANDARD_OUT', 'STANDARD_ERROR'
+    }
+}
+
 tasks.register('test256', Test) {
     dependsOn downloadTestData
     useJUnitPlatform()
@@ -102,6 +115,7 @@ tasks.register('test512', Test) {
 }
 
 test {
+    dependsOn 'test128'
     dependsOn 'test256'
     dependsOn 'test512'
 }
