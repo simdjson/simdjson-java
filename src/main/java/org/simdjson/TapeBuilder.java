@@ -206,7 +206,13 @@ class TapeBuilder {
     }
 
     JsonValue createJsonValue(byte[] buffer) {
-        return new JsonValue(tape, 1, stringBuffer, buffer);
+        Tape newTape = new Tape(tape);
+
+        int stringBufferLen = stringParser.getStringBufferIdx();
+        byte[] newStringBuffer = new byte[stringBufferLen];
+        System.arraycopy(stringBuffer, 0, newStringBuffer, 0, stringBufferLen);
+
+        return new JsonValue(newTape, 1, newStringBuffer, buffer);
     }
 
     private static class OpenContainer {

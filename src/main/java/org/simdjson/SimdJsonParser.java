@@ -11,7 +11,7 @@ public class SimdJsonParser {
     private final StructuralIndexer indexer;
     private final BitIndexes bitIndexes;
     private final JsonIterator jsonIterator;
-    private final byte[] paddedBuffer;
+    private final int capacity;
 
     public SimdJsonParser() {
         this(DEFAULT_CAPACITY, DEFAULT_MAX_DEPTH);
@@ -20,7 +20,7 @@ public class SimdJsonParser {
     public SimdJsonParser(int capacity, int maxDepth) {
         bitIndexes = new BitIndexes(capacity);
         jsonIterator = new JsonIterator(bitIndexes, capacity, maxDepth, PADDING);
-        paddedBuffer = new byte[capacity];
+        this.capacity = capacity;
         reader = new BlockReader(STEP_SIZE);
         indexer = new StructuralIndexer(bitIndexes);
     }
@@ -34,7 +34,8 @@ public class SimdJsonParser {
     }
 
     private byte[] padIfNeeded(byte[] buffer, int len) {
-        if (buffer.length - len < PADDING) {
+        if (buffer.length - len < PADDING && len < capacity) {
+            byte[] paddedBuffer = new byte[len + PADDING];
             System.arraycopy(buffer, 0, paddedBuffer, 0, len);
             return paddedBuffer;
         }

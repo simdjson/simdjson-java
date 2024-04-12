@@ -26,6 +26,10 @@ class StringParser {
         this.stringBuffer = stringBuffer;
     }
 
+    int getStringBufferIdx() {
+        return stringBufferIdx;
+    }
+
     void parseString(byte[] buffer, int idx) {
         tape.append(stringBufferIdx, STRING);
         int src = idx + 1;

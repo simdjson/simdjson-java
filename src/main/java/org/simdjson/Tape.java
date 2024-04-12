@@ -25,6 +25,12 @@ class Tape {
         tape = new long[capacity];
     }
 
+    Tape(Tape other) {
+        this.tape = new long[other.tapeIdx];
+        System.arraycopy(other.tape, 0, this.tape, 0, other.tapeIdx);
+        this.tapeIdx = other.tapeIdx;
+    }
+
     void append(long val, char type) {
         tape[tapeIdx] = val | (((long) type) << 56);
         tapeIdx++;
