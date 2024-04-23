@@ -21,7 +21,7 @@ import static org.simdjson.SimdJsonPaddingUtil.padWithSpaces;
 public class NumberParserBenchmark {
 
     private final Tape tape = new Tape(100);
-    private final NumberParser numberParser = new NumberParser(tape);
+    private final NumberParser numberParser = new NumberParser();
 
     @Param({
             "2.2250738585072013e-308", // fast path
@@ -43,7 +43,7 @@ public class NumberParserBenchmark {
     @Benchmark
     public double simdjson() {
         tape.reset();
-        numberParser.parseNumber(numberUtf8Bytes, 0);
+        numberParser.parseNumber(numberUtf8Bytes, 0, tape);
         return tape.getDouble(0);
     }
 }

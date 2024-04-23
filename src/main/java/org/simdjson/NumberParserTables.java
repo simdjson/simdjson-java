@@ -73,6 +73,8 @@ class NumberParserTables {
             6, 2, 2, 4, 0, 6, 9, 5, 9, 5, 3, 3, 6, 9, 1, 4, 0, 6, 2, 5
     };
 
+    static final int MIN_POWER_OF_FIVE = -342;
+
     static final long[] POWERS_OF_FIVE = {
             0xeef453d6923bd65aL, 0x113faa2906a13b3fL,
             0x9558b4661b6565f8L, 0x4ac7ca59a424c507L,

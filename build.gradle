@@ -1,6 +1,7 @@
 import me.champeau.jmh.JmhBytecodeGeneratorTask
-import org.gradle.internal.os.OperatingSystem
 import org.ajoberstar.grgit.Grgit
+import org.gradle.internal.os.OperatingSystem
+
 import java.time.Duration
 
 plugins {
@@ -42,7 +43,7 @@ java {
 }
 
 ext {
-    junitVersion = '5.9.1'
+    junitVersion = '5.10.2'
     jsoniterScalaVersion = '2.24.4'
 }
 
@@ -56,6 +57,7 @@ dependencies {
 
     testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.24.2'
     testImplementation group: 'org.apache.commons', name: 'commons-text', version: '1.10.0'
+    testImplementation group: 'org.junit-pioneer', name: 'junit-pioneer', version: '2.2.0'
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: junitVersion
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: junitVersion
     testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: junitVersion
@@ -136,15 +138,21 @@ jmh {
             '--add-modules=jdk.incubator.vector'
     ]
     if (getBooleanProperty('jmh.profilersEnabled', false)) {
+        createDirIfDoesNotExist('./profilers')
         if (OperatingSystem.current().isLinux()) {
-            profilers = [
-                    'perf',
-                    'perfasm:intelSyntax=true',
-                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getAsyncProfilerLibPath('LD_LIBRARY_PATH')
+            def profilerList = [
+                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getLibPath('LD_LIBRARY_PATH')
             ]
+            if (getBooleanProperty('jmh.jitLogEnabled', false)) {
+                createDirIfDoesNotExist('./profilers/perfasm')
+                profilerList += [
+                        'perfasm:intelSyntax=true;saveLog=true;saveLogTo=./profilers/perfasm'
+                ]
+            }
+            profilers = profilerList
         } else if (OperatingSystem.current().isMacOsX()) {
             profilers = [
-                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getAsyncProfilerLibPath('DYLD_LIBRARY_PATH')
+                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getLibPath('DYLD_LIBRARY_PATH')
             ]
         }
     }
@@ -218,6 +226,11 @@ def getBooleanProperty(String name, boolean defaultValue) {
     Boolean.valueOf((project.findProperty(name) ?: defaultValue) as String)
 }
 
-static def getAsyncProfilerLibPath(String envVarName) {
+static def getLibPath(String envVarName) {
     System.getenv(envVarName) ?: System.getProperty('java.library.path')
+}
+
+static createDirIfDoesNotExist(String dir) {
+    File file = new File(dir)
+    file.mkdirs()
 }

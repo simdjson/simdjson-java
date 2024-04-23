@@ -10,6 +10,7 @@ import static org.simdjson.Tape.NULL_VALUE;
 import static org.simdjson.Tape.ROOT;
 import static org.simdjson.Tape.START_ARRAY;
 import static org.simdjson.Tape.START_OBJECT;
+import static org.simdjson.Tape.STRING;
 import static org.simdjson.Tape.TRUE_VALUE;
 
 class TapeBuilder {
@@ -23,16 +24,18 @@ class TapeBuilder {
     private final NumberParser numberParser;
     private final StringParser stringParser;
 
-    TapeBuilder(int capacity, int depth, int padding) {
+    private int stringBufferIdx;
+
+    TapeBuilder(int capacity, int depth, int padding, byte[] stringBuffer) {
         this.tape = new Tape(capacity);
         this.openContainers = new OpenContainer[depth];
         this.padding = padding;
         for (int i = 0; i < openContainers.length; i++) {
             openContainers[i] = new OpenContainer();
         }
-        this.stringBuffer = new byte[capacity];
-        this.numberParser = new NumberParser(tape);
-        this.stringParser = new StringParser(tape, stringBuffer);
+        this.stringBuffer = stringBuffer;
+        this.numberParser = new NumberParser();
+        this.stringParser = new StringParser();
     }
 
     void visitDocumentStart() {
@@ -55,9 +58,9 @@ class TapeBuilder {
     void visitRootPrimitive(byte[] buffer, int idx, int len) {
         switch (buffer[idx]) {
             case '"' -> visitString(buffer, idx);
-            case 't' -> visitRootTrueAtom(buffer, idx);
-            case 'f' -> visitRootFalseAtom(buffer, idx);
-            case 'n' -> visitRootNullAtom(buffer, idx);
+            case 't' -> visitRootTrueAtom(buffer, idx, len);
+            case 'f' -> visitRootFalseAtom(buffer, idx, len);
+            case 'n' -> visitRootNullAtom(buffer, idx, len);
             case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> visitRootNumber(buffer, idx, len);
             default -> throw new JsonParsingException("Unrecognized primitive. Expected: string, number, 'true', 'false' or 'null'.");
         }
@@ -102,8 +105,9 @@ class TapeBuilder {
         tape.append(0, TRUE_VALUE);
     }
 
-    private void visitRootTrueAtom(byte[] buffer, int idx) {
-        if (!isTrue(buffer, idx)) {
+    private void visitRootTrueAtom(byte[] buffer, int idx, int len) {
+        boolean valid = idx + 4 <= len && isTrue(buffer, idx) && (idx + 4 == len || isStructuralOrWhitespace(buffer[idx + 4]));
+        if (!valid) {
             throw new JsonParsingException("Invalid value starting at " + idx + ". Expected 'true'.");
         }
         tape.append(0, TRUE_VALUE);
@@ -124,8 +128,9 @@ class TapeBuilder {
         tape.append(0, FALSE_VALUE);
     }
 
-    private void visitRootFalseAtom(byte[] buffer, int idx) {
-        if (!isFalse(buffer, idx)) {
+    private void visitRootFalseAtom(byte[] buffer, int idx, int len) {
+        boolean valid = idx + 5 <= len && isFalse(buffer, idx) && (idx + 5 == len || isStructuralOrWhitespace(buffer[idx + 5]));
+        if (!valid) {
             throw new JsonParsingException("Invalid value starting at " + idx + ". Expected 'false'.");
         }
         tape.append(0, FALSE_VALUE);
@@ -147,8 +152,9 @@ class TapeBuilder {
         tape.append(0, NULL_VALUE);
     }
 
-    private void visitRootNullAtom(byte[] buffer, int idx) {
-        if (!isNull(buffer, idx)) {
+    private void visitRootNullAtom(byte[] buffer, int idx, int len) {
+        boolean valid = idx + 4 <= len && isNull(buffer, idx) && (idx + 4 == len || isStructuralOrWhitespace(buffer[idx + 4]));
+        if (!valid) {
             throw new JsonParsingException("Invalid value starting at " + idx + ". Expected 'null'.");
         }
         tape.append(0, NULL_VALUE);
@@ -166,11 +172,12 @@ class TapeBuilder {
     }
 
     private void visitString(byte[] buffer, int idx) {
-        stringParser.parseString(buffer, idx);
+        tape.append(stringBufferIdx, STRING);
+        stringBufferIdx = stringParser.parseString(buffer, idx, stringBuffer, stringBufferIdx);
     }
 
     private void visitNumber(byte[] buffer, int idx) {
-        numberParser.parseNumber(buffer, idx);
+        numberParser.parseNumber(buffer, idx, tape);
     }
 
     private void visitRootNumber(byte[] buffer, int idx, int len) {
@@ -178,7 +185,7 @@ class TapeBuilder {
         byte[] copy = new byte[remainingLen + padding];
         System.arraycopy(buffer, idx, copy, 0, remainingLen);
         Arrays.fill(copy, remainingLen, remainingLen + padding, SPACE);
-        numberParser.parseNumber(copy, 0);
+        numberParser.parseNumber(copy, 0, tape);
     }
 
     private void startContainer(int depth) {
@@ -202,7 +209,7 @@ class TapeBuilder {
 
     void reset() {
         tape.reset();
-        stringParser.reset();
+        stringBufferIdx = 0;
     }
 
     JsonValue createJsonValue(byte[] buffer) {

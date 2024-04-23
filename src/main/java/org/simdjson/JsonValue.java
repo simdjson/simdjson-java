@@ -3,6 +3,7 @@ package org.simdjson;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static org.simdjson.Tape.DOUBLE;
 import static org.simdjson.Tape.FALSE_VALUE;
@@ -157,9 +158,12 @@ public class JsonValue {
 
         @Override
         public JsonValue next() {
-            JsonValue value = new JsonValue(tape, idx, stringBuffer, buffer);
-            idx = tape.computeNextIndex(idx);
-            return value;
+            if (hasNext()) {
+                JsonValue value = new JsonValue(tape, idx, stringBuffer, buffer);
+                idx = tape.computeNextIndex(idx);
+                return value;
+            }
+            throw new NoSuchElementException("No more elements");
         }
     }
 

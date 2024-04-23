@@ -85,7 +85,6 @@ class StructuralIndexer {
         long nonQuoteScalar = scalar & ~strings.quote();
         long followsNonQuoteScalar = nonQuoteScalar << 1 | prevScalar;
         prevScalar = nonQuoteScalar >>> 63;
-        // TODO: utf-8 validation
         long potentialScalarStart = scalar & ~followsNonQuoteScalar;
         long potentialStructuralStart = characters.op() | potentialScalarStart;
         bitIndexes.write(blockIndex, prevStructurals);
@@ -94,8 +93,7 @@ class StructuralIndexer {
     }
 
     private long lteq(ByteVector chunk0, byte scalar) {
-        long r = chunk0.compare(UNSIGNED_LE, scalar).toLong();
-        return r;
+        return chunk0.compare(UNSIGNED_LE, scalar).toLong();
     }
 
     private long lteq(ByteVector chunk0, ByteVector chunk1, byte scalar) {
@@ -106,6 +104,7 @@ class StructuralIndexer {
 
     void finish(int blockIndex) {
         bitIndexes.write(blockIndex, prevStructurals);
+        bitIndexes.finish();
 
         stringScanner.finish();
         if (unescapedCharsError != 0) {

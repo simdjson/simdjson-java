@@ -4,8 +4,6 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.plokhotnyuk.jsoniter_scala.core.ReaderConfig$;
-import com.github.plokhotnyuk.jsoniter_scala.core.package$;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.any.Any;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -43,19 +41,6 @@ public class ParseAndSelectBenchmark {
             buffer = is.readAllBytes();
             bufferPadded = padded(buffer);
         }
-    }
-
-    @Benchmark
-    public int countUniqueUsersWithDefaultProfile_jsoniter_scala() throws IOException {
-        Twitter twitter = package$.MODULE$.readFromArray(buffer, ReaderConfig$.MODULE$, Twitter$.MODULE$.codec());
-        Set<String> defaultUsers = new HashSet<>();
-        for (Status tweet: twitter.statuses()) {
-            User user = tweet.user();
-            if (user.default_profile()) {
-                defaultUsers.add(user.screen_name());
-            }
-        }
-        return defaultUsers.size();
     }
 
     @Benchmark
