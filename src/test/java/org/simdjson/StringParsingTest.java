@@ -22,7 +22,7 @@ public class StringParsingTest {
 
     @ParameterizedTest
     @RandomStringSource
-    public void stringAtRoot(String jsonStr) {
+    public void stringAtRoot(String jsonStr, String expected) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
         byte[] json = toUtf8("\"" + jsonStr + "\"");
@@ -31,7 +31,7 @@ public class StringParsingTest {
         JsonValue jsonValue = parser.parse(json, json.length);
 
         // then
-        assertThat(jsonValue).isEqualTo(jsonStr);
+        assertThat(jsonValue).isEqualTo(expected);
     }
 
     @ParameterizedTest

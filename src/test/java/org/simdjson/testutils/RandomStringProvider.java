@@ -1,5 +1,6 @@
 package org.simdjson.testutils;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
@@ -35,8 +36,23 @@ class RandomStringProvider implements ArgumentsProvider, AnnotationConsumer<Rand
 
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+        Class<?>[] parameterTypes = context.getRequiredTestMethod().getParameterTypes();
+        if (parameterTypes.length != 2) {
+            throw new IllegalArgumentException("Test method should have two arguments: an input string and an expected value.");
+        }
+        if (parameterTypes[0] != String.class) {
+            throw new IllegalArgumentException("The first argument must be a String.");
+        }
+        if (parameterTypes[1] != String.class && parameterTypes[1] != Character.class && parameterTypes[1] != char.class) {
+            throw new IllegalArgumentException("The second argument must be either a String, Character, or char.");
+        }
         return IntStream.range(0, count)
-                .mapToObj(i -> StringTestData.randomString(minChars, maxChars))
-                .map(Arguments::of);
+                .mapToObj(i -> {
+                    String jsonStr = StringTestData.randomString(minChars, maxChars);
+                    if (parameterTypes[1] == String.class) {
+                        return Arguments.of(jsonStr, StringEscapeUtils.unescapeJson(jsonStr));
+                    }
+                    return Arguments.of(jsonStr, StringEscapeUtils.unescapeJson(jsonStr).charAt(0));
+                });
     }
 }

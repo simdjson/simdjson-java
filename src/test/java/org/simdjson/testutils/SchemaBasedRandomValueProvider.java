@@ -56,10 +56,10 @@ class SchemaBasedRandomValueProvider implements ArgumentsProvider, AnnotationCon
 
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+        Class<?>[] parameterTypes = context.getRequiredTestMethod().getParameterTypes();
         return Arrays.stream(schemas)
                 .map(schema -> {
                     GeneratedElement expected = generate(schema, schema);
-                    Class<?>[] parameterTypes = context.getRequiredTestMethod().getParameterTypes();
                     Object[] args = new Object[parameterTypes.length];
                     for (int i = 0; i < args.length; i++) {
                         if (parameterTypes[i] == Class.class) {
@@ -194,7 +194,7 @@ class SchemaBasedRandomValueProvider implements ArgumentsProvider, AnnotationCon
         }
         if (elementType == String.class) {
             String element = StringTestData.randomString(1, 50);
-            return new GeneratedElement(StringEscapeUtils.unescapeJava(element), "\"" + element + "\"");
+            return new GeneratedElement(StringEscapeUtils.unescapeJson(element), "\"" + element + "\"");
         }
         if (elementType == Character.class || elementType == char.class) {
             String element = StringTestData.randomString(1, 1);

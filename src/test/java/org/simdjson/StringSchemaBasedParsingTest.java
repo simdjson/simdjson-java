@@ -1,6 +1,5 @@
 package org.simdjson;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -48,10 +47,10 @@ public class StringSchemaBasedParsingTest {
 
     @ParameterizedTest
     @RandomStringSource
-    public void stringAtRoot(String expected) {
+    public void stringAtRoot(String jsonStr, String expected) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("\"" + expected + "\"");
+        byte[] json = toUtf8("\"" + jsonStr + "\"");
 
         // when
         String string = parser.parse(json, json.length, String.class);
@@ -139,10 +138,10 @@ public class StringSchemaBasedParsingTest {
 
     @ParameterizedTest
     @RandomStringSource
-    public void stringAtObjectField(String expected) {
+    public void stringAtObjectField(String jsonStr, String expected) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("{\"field\": \"" + expected + "\"}");
+        byte[] json = toUtf8("{\"field\": \"" + jsonStr + "\"}");
 
         // when
         RecordWithStringField object = parser.parse(json, json.length, RecordWithStringField.class);
@@ -247,32 +246,32 @@ public class StringSchemaBasedParsingTest {
 
     @ParameterizedTest
     @RandomStringSource(maxChars = 1)
-    public void characterAtRoot(String expected) {
+    public void characterAtRoot(String jsonStr, Character expected) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("\"" + expected + "\"");
+        byte[] json = toUtf8("\"" + jsonStr + "\"");
 
         // when
         Character character = parser.parse(json, json.length, Character.class);
 
         // then
         assertThat(character)
-                .isEqualTo(StringEscapeUtils.unescapeJava(expected).charAt(0));
+                .isEqualTo(expected);
     }
 
     @ParameterizedTest
     @RandomStringSource(maxChars = 1)
-    public void primitiveCharAtRoot(String expected) {
+    public void primitiveCharAtRoot(String jsonStr, char expected) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("\"" + expected + "\"");
+        byte[] json = toUtf8("\"" + jsonStr + "\"");
 
         // when
         char character = parser.parse(json, json.length, char.class);
 
         // then
         assertThat(character)
-                .isEqualTo(StringEscapeUtils.unescapeJava(expected).charAt(0));
+                .isEqualTo(expected);
     }
 
     @Test
@@ -334,17 +333,17 @@ public class StringSchemaBasedParsingTest {
 
     @ParameterizedTest
     @RandomStringSource(maxChars = 1)
-    public void characterAtObjectField(String expected) {
+    public void characterAtObjectField(String jsonStr, Character expected) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("{\"field\": \"" + expected + "\"}");
+        byte[] json = toUtf8("{\"field\": \"" + jsonStr + "\"}");
 
         // when
         RecordWithCharacterField object = parser.parse(json, json.length, RecordWithCharacterField.class);
 
         // then
         assertThat(object.field())
-                .isEqualTo(StringEscapeUtils.unescapeJava(expected).charAt(0));
+                .isEqualTo(expected);
     }
 
     @Test
@@ -362,17 +361,17 @@ public class StringSchemaBasedParsingTest {
 
     @ParameterizedTest
     @RandomStringSource(maxChars = 1)
-    public void primitiveCharAtObjectField(String expected) {
+    public void primitiveCharAtObjectField(String jsonStr, char expected) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8("{\"field\": \"" + expected + "\"}");
+        byte[] json = toUtf8("{\"field\": \"" + jsonStr + "\"}");
 
         // when
         RecordWithPrimitiveCharacterField object = parser.parse(json, json.length, RecordWithPrimitiveCharacterField.class);
 
         // then
         assertThat(object.field())
-                .isEqualTo(StringEscapeUtils.unescapeJava(expected).charAt(0));
+                .isEqualTo(expected);
     }
 
     @Test
