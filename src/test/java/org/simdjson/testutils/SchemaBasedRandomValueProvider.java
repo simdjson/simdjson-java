@@ -194,7 +194,7 @@ class SchemaBasedRandomValueProvider implements ArgumentsProvider, AnnotationCon
         }
         if (elementType == String.class) {
             String element = StringTestData.randomString(1, 50);
-            return new GeneratedElement(element, "\"" + element + "\"");
+            return new GeneratedElement(StringEscapeUtils.unescapeJava(element), "\"" + element + "\"");
         }
         if (elementType == Character.class || elementType == char.class) {
             String element = StringTestData.randomString(1, 1);
