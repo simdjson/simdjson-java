@@ -4,8 +4,6 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jsoniter.JsonIterator;
-import com.jsoniter.any.Any;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
@@ -41,6 +39,7 @@ public class ParseAndSelectBenchmark {
             buffer = is.readAllBytes();
             bufferPadded = padded(buffer);
         }
+        System.out.println("VectorSpecies = " + StructuralIndexer.BYTE_SPECIES);
     }
 
     @Benchmark
@@ -68,19 +67,6 @@ public class ParseAndSelectBenchmark {
             JSONObject user = (JSONObject) tweet.get("user");
             if (user.getBoolean("default_profile")) {
                 defaultUsers.add(user.getString("screen_name"));
-            }
-        }
-        return defaultUsers.size();
-    }
-
-    @Benchmark
-    public int countUniqueUsersWithDefaultProfile_jsoniter() {
-        Any json = JsonIterator.deserialize(buffer);
-        Set<String> defaultUsers = new HashSet<>();
-        for (Any tweet : json.get("statuses")) {
-            Any user = tweet.get("user");
-            if (user.get("default_profile").toBoolean()) {
-                defaultUsers.add(user.get("screen_name").toString());
             }
         }
         return defaultUsers.size();

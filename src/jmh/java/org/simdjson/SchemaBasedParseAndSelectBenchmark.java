@@ -41,6 +41,7 @@ public class SchemaBasedParseAndSelectBenchmark {
             buffer = is.readAllBytes();
             bufferPadded = padded(buffer);
         }
+        System.out.println("VectorSpecies = " + StructuralIndexer.BYTE_SPECIES);
     }
 
     @Benchmark
