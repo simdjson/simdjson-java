@@ -47,6 +47,19 @@ public class SchemaBasedParseAndSelectBenchmark {
     @Benchmark
     public int countUniqueUsersWithDefaultProfile_simdjson() {
         Set<String> defaultUsers = new HashSet<>();
+        SimdJsonTwitter twitter = simdJsonParser.parse(buffer, buffer.length, SimdJsonTwitter.class);
+        for (SimdJsonStatus status : twitter.statuses()) {
+            SimdJsonUser user = status.user();
+            if (user.default_profile()) {
+                defaultUsers.add(user.screen_name());
+            }
+        }
+        return defaultUsers.size();
+    }
+
+    @Benchmark
+    public int countUniqueUsersWithDefaultProfile_simdjsonPadded() {
+        Set<String> defaultUsers = new HashSet<>();
         SimdJsonTwitter twitter = simdJsonParser.parse(bufferPadded, buffer.length, SimdJsonTwitter.class);
         for (SimdJsonStatus status : twitter.statuses()) {
             SimdJsonUser user = status.user();
