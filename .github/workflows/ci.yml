@@ -9,6 +9,7 @@ jobs:
     strategy:
       matrix:
         version: [ 18, 19, 20, 21, 22 ]
+        vector-length: [ 256, 512 ]
 
     steps:
       - uses: actions/checkout@v4
@@ -25,4 +26,4 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Tests
-        run: ./gradlew check
+        run: ./gradlew test${{ matrix.vector-length }}
