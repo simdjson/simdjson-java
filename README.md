@@ -10,6 +10,8 @@ by Geoff Langdale and Daniel Lemire.
 
 ## Code Sample
 
+### DOM Parser
+
 ```java
 byte[] json = loadTwitterJson();
 
@@ -22,6 +24,30 @@ while (tweets.hasNext()) {
     if (user.get("default_profile").asBoolean()) {
         System.out.println(user.get("screen_name").asString());
     }
+}
+```
+
+### Schema-Based Parser
+
+```java
+byte[] json = loadTwitterJson();
+
+SimdJsonParser parser = new SimdJsonParser();
+SimdJsonTwitter twitter = simdJsonParser.parse(buffer, buffer.length, SimdJsonTwitter.class);
+for (SimdJsonStatus status : twitter.statuses()) {
+    SimdJsonUser user = status.user();
+    if (user.default_profile()) {
+        System.out.println(user.screen_name());
+    }
+}
+
+record SimdJsonUser(boolean default_profile, String screen_name) {
+}
+
+record SimdJsonStatus(SimdJsonUser user) {
+}
+
+record SimdJsonTwitter(List<SimdJsonStatus> statuses) {
 }
 ```
 
@@ -67,21 +93,57 @@ This section presents a performance comparison of different JSON parsers availab
 the [twitter.json](src/jmh/resources/twitter.json) dataset, and its goal was to measure the throughput (ops/s) of parsing 
 and finding all unique users with a default profile.
 
-**Note that simdjson-java is still missing several features (see [GitHub Issues](https://github.com/simdjson/simdjson-java/issues)), 
-so the following results may not reflect its real performance.**
+### 256-bit Vectors
 
 Environment:
-* CPU: Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz
-* OS: Ubuntu 23.04, kernel 6.2.0-23-generic
-* Java: OpenJDK 64-Bit Server VM Temurin-20.0.1+9
+* CPU: Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz
+* OS: Ubuntu 24.04 LTS, kernel 6.8.0-1008-aws
+* Java: OpenJDK 64-Bit Server VM (build 21.0.3+9-Ubuntu-1ubuntu1, mixed mode, sharing)
 
- Library                                           | Version | Throughput (ops/s) 
----------------------------------------------------|---------|--------------------
- simdjson-java                                     | -       | 1450.951           
- simdjson-java (padded)                            | -       | 1505.227           
- [jackson](https://github.com/FasterXML/jackson)   | 2.15.2  | 504.562            
- [fastjson2](https://github.com/alibaba/fastjson)  | 2.0.35  | 590.743            
- [jsoniter](https://github.com/json-iterator/java) | 0.9.23  | 384.664            
+DOM parsers ([ParseAndSelectBenchmark](src/jmh/java/org/simdjson/ParseAndSelectBenchmark.java)):
+
+| Library                                          | Version | Throughput (ops/s) |
+|--------------------------------------------------|---------|--------------------|
+| simdjson-java (padded)                           | 0.3.0   | 783.878            |
+| simdjson-java                                    | 0.3.0   | 760.426            |
+| [fastjson2](https://github.com/alibaba/fastjson) | 2.0.49  | 308.660            |
+| [jackson](https://github.com/FasterXML/jackson)  | 2.17.0  | 259.536            |
+
+Schema-based parsers ([SchemaBasedParseAndSelectBenchmark](src/jmh/java/org/simdjson/SchemaBasedParseAndSelectBenchmark.java)):
+
+| Library                                                         | Version | Throughput (ops/s) |
+|-----------------------------------------------------------------|---------|--------------------|
+| simdjson-java (padded)                                          | 0.3.0   | 1237.432           |
+| simdjson-java                                                   | 0.3.0   | 1216.891           |
+| [jsoniter-scala](https://github.com/plokhotnyuk/jsoniter-scala) | 2.28.4  | 614.138            |
+| [fastjson2](https://github.com/alibaba/fastjson)                | 2.0.49  | 494.362            |
+| [jackson](https://github.com/FasterXML/jackson)                 | 2.17.0  | 339.904            |
+
+### 512-bit Vectors
+
+Environment:
+* CPU: Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+* OS: Ubuntu 24.04 LTS, kernel 6.8.0-1008-aws
+* Java: OpenJDK 64-Bit Server VM (build 21.0.3+9-Ubuntu-1ubuntu1, mixed mode, sharing)
+
+DOM parsers ([ParseAndSelectBenchmark](src/jmh/java/org/simdjson/ParseAndSelectBenchmark.java)):
+
+| Library                                          | Version | Throughput (ops/s) |
+|--------------------------------------------------|---------|--------------------|
+| simdjson-java (padded)                           | 0.3.0   | 1842.146           |
+| simdjson-java                                    | 0.3.0   | 1765.592           |
+| [fastjson2](https://github.com/alibaba/fastjson) | 2.0.49  | 718.133            |
+| [jackson](https://github.com/FasterXML/jackson)  | 2.17.0  | 616.617            |
+
+Schema-based parsers ([SchemaBasedParseAndSelectBenchmark](src/jmh/java/org/simdjson/SchemaBasedParseAndSelectBenchmark.java)):
+
+| Library                                                         | Version | Throughput (ops/s) |
+|-----------------------------------------------------------------|---------|--------------------|
+| simdjson-java (padded)                                          | 0.3.0   | 3164.274           |
+| simdjson-java                                                   | 0.3.0   | 2990.289           |
+| [jsoniter-scala](https://github.com/plokhotnyuk/jsoniter-scala) | 2.28.4  | 1826.229           |
+| [fastjson2](https://github.com/alibaba/fastjson)                | 2.0.49  | 1259.622           |
+| [jackson](https://github.com/FasterXML/jackson)                 | 2.17.0  | 789.030            |
 
 To reproduce the benchmark results, execute the following command:
 
