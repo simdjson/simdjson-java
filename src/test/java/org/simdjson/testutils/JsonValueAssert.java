@@ -1,19 +1,16 @@
-package org.simdjson;
+package org.simdjson.testutils;
 
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.Assertions;
+import org.simdjson.JsonValue;
 
-class JsonValueAssert extends AbstractAssert<JsonValueAssert, JsonValue> {
+public class JsonValueAssert extends AbstractAssert<JsonValueAssert, JsonValue> {
 
     JsonValueAssert(JsonValue actual) {
         super(actual, JsonValueAssert.class);
     }
 
-    static JsonValueAssert assertThat(JsonValue actual) {
-        return new JsonValueAssert(actual);
-    }
-
-    JsonValueAssert isEqualTo(long expected) {
+    public JsonValueAssert isEqualTo(long expected) {
         Assertions.assertThat(actual.isLong())
                 .withFailMessage("Expecting value to be long but was " + getActualType())
                 .isTrue();
@@ -21,7 +18,7 @@ class JsonValueAssert extends AbstractAssert<JsonValueAssert, JsonValue> {
         return this;
     }
 
-    JsonValueAssert isEqualTo(Double expected) {
+    public JsonValueAssert isEqualTo(Double expected) {
         Assertions.assertThat(actual.isDouble())
                 .withFailMessage("Expecting value to be double but was " + getActualType())
                 .isTrue();
@@ -29,7 +26,7 @@ class JsonValueAssert extends AbstractAssert<JsonValueAssert, JsonValue> {
         return this;
     }
 
-    JsonValueAssert isEqualTo(String expected) {
+    public JsonValueAssert isEqualTo(String expected) {
         Assertions.assertThat(actual.isString())
                 .withFailMessage("Expecting value to be string but was " + getActualType())
                 .isTrue();
@@ -37,7 +34,7 @@ class JsonValueAssert extends AbstractAssert<JsonValueAssert, JsonValue> {
         return this;
     }
 
-    JsonValueAssert isEqualTo(boolean expected) {
+    public JsonValueAssert isEqualTo(boolean expected) {
         Assertions.assertThat(actual.isBoolean())
                 .withFailMessage("Expecting value to be boolean but was " + getActualType())
                 .isTrue();

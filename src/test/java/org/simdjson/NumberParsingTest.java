@@ -1,25 +1,67 @@
 package org.simdjson;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.simdjson.testutils.FloatingPointNumberTestFile;
+import org.simdjson.testutils.FloatingPointNumberTestFile.FloatingPointNumberTestCase;
+import org.simdjson.testutils.FloatingPointNumberTestFilesSource;
+import org.simdjson.testutils.RandomIntegralNumberSource;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.stream.Stream;
+import java.util.Iterator;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.JsonValueAssert.assertThat;
+import static org.simdjson.TestUtils.padWithSpaces;
 import static org.simdjson.TestUtils.toUtf8;
+import static org.simdjson.testutils.SimdJsonAssertions.assertThat;
 
 public class NumberParsingTest {
+
+    @ParameterizedTest
+    @RandomIntegralNumberSource(classes = long.class, includeMinMax = true)
+    public void longAtRoot(String longStr, long expected) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(longStr);
+
+        // when
+        JsonValue jsonValue = parser.parse(json, json.length);
+
+        // then
+        assertThat(jsonValue).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1.1", "-1.1", "1e1", "1E1", "-1e1", "-1E1", "1e-1", "1E-1", "1.1e1", "1.1E1"})
+    public void doubleAtRoot(String doubleStr) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(doubleStr);
+
+        // when
+        JsonValue jsonValue = parser.parse(json, json.length);
+
+        // then
+        assertThat(jsonValue).isEqualTo(Double.parseDouble(doubleStr));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1,", "1.1,"})
+    public void invalidNumbersAtRoot(String jsonStr) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(jsonStr);
+
+        // when
+        JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
+
+        // then
+        assertThat(ex)
+                .hasMessage("More than one JSON value at the root of the document, or extra characters at the end of the JSON!");
+    }
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -37,7 +79,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Invalid number. Decimal point has to be followed by a digit.");
+        assertThat(ex)
+                .hasMessage("Invalid number. Decimal point has to be followed by a digit.");
     }
 
     @ParameterizedTest
@@ -62,7 +105,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Invalid number. Exponent indicator has to be followed by a digit.");
+        assertThat(ex)
+                .hasMessage("Invalid number. Exponent indicator has to be followed by a digit.");
     }
 
     @ParameterizedTest
@@ -83,7 +127,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Invalid number. Leading zeroes are not allowed.");
+        assertThat(ex)
+                .hasMessage("Invalid number. Leading zeroes are not allowed.");
     }
 
     @ParameterizedTest
@@ -105,7 +150,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Invalid number. Minus has to be followed by a digit.");
+        assertThat(ex)
+                .hasMessage("Invalid number. Minus has to be followed by a digit.");
     }
 
     @ParameterizedTest
@@ -125,7 +171,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Number has to be followed by a structural character or whitespace.");
+        assertThat(ex)
+                .hasMessage("Number has to be followed by a structural character or whitespace.");
     }
 
     @Test
@@ -151,7 +198,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Unrecognized primitive. Expected: string, number, 'true', 'false' or 'null'.");
+        assertThat(ex)
+                .hasMessage("Unrecognized primitive. Expected: string, number, 'true', 'false' or 'null'.");
     }
 
     @ParameterizedTest
@@ -170,7 +218,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Unrecognized primitive. Expected: string, number, 'true', 'false' or 'null'.");
+        assertThat(ex)
+                .hasMessage("Unrecognized primitive. Expected: string, number, 'true', 'false' or 'null'.");
     }
 
     @ParameterizedTest
@@ -208,7 +257,8 @@ public class NumberParsingTest {
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length));
 
         // then
-        assertThat(ex.getMessage()).isEqualTo("Number value is out of long range ([-9223372036854775808, 9223372036854775807]).");
+        assertThat(ex)
+                .hasMessage("Number value is out of long range ([-9223372036854775808, 9223372036854775807]).");
     }
 
     @ParameterizedTest
@@ -541,50 +591,57 @@ public class NumberParsingTest {
     }
 
     @ParameterizedTest
-    @MethodSource("listTestFiles")
-    // This test assumes that input files are formatted as described in: https://github.com/nigeltao/parse-number-fxx-test-data
-    public void testFiles(File file) throws IOException {
+    @FloatingPointNumberTestFilesSource
+    public void testFiles(FloatingPointNumberTestFile file) throws IOException {
         // given
         SimdJsonParser parser = new SimdJsonParser();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] cells = line.split(" ");
-                Double expected = Double.longBitsToDouble(Long.decode("0x" + cells[2]));
-                String input = readInputNumber(cells[3]);
-                byte[] json = toUtf8(input);
+        try (FloatingPointNumberTestFile.FloatingPointNumberTestCasesIterator it = file.iterator()) {
+            while (it.hasNext()) {
+                FloatingPointNumberTestCase testCase = it.next();
+                byte[] json = toUtf8(testCase.input());
 
                 // when
                 JsonValue value = parser.parse(json, json.length);
 
                 // then
-                assertThat(value).isEqualTo(expected);
+                assertThat(value)
+                        .withFailMessage("%nline: %d%n expected: %s%n was: %s", testCase.line(), testCase.expectedDouble(), value)
+                        .isEqualTo(testCase.expectedDouble());
             }
         }
     }
 
-    private static String readInputNumber(String input) {
-        boolean isDouble = input.indexOf('e') >= 0 || input.indexOf('E') >= 0 || input.indexOf('.') >= 0;
-        if (isDouble) {
-            if (input.startsWith(".")) {
-                input = "0" + input;
-            }
-            return input.replaceFirst("\\.[eE]", ".0e");
-        }
-        return input + ".0";
+    @Test
+    public void arrayOfNumbers() {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8("[0, 1, -1, 1.1]");
+
+        // when
+        JsonValue jsonValue = parser.parse(json, json.length);
+
+        // then
+        assertThat(jsonValue.isArray()).isTrue();
+        Iterator<JsonValue> it = jsonValue.arrayIterator();
+        Assertions.assertThat(it.hasNext()).isTrue();
+        assertThat(it.next()).isEqualTo(0);
+        assertThat(it.next()).isEqualTo(1);
+        assertThat(it.next()).isEqualTo(-1);
+        assertThat(it.next()).isEqualTo(1.1);
+        Assertions.assertThat(it.hasNext()).isFalse();
     }
 
-    private static List<File> listTestFiles() throws IOException {
-        String testDataDir = System.getProperty("org.simdjson.testdata.dir", System.getProperty("user.dir") + "/testdata");
-        File[] testFiles = Path.of(testDataDir, "parse-number-fxx-test-data", "data").toFile().listFiles();
-        if (testFiles == null) {
-            File emptyFile = new File(testDataDir, "empty.txt");
-            emptyFile.createNewFile();
-            return List.of(emptyFile);
-        }
-        return Stream.of(testFiles)
-                .filter(File::isFile)
-                .toList();
+    @Test
+    public void passedLengthSmallerThanNumberLength() {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(padWithSpaces("1234"));
+
+        // when
+        JsonValue value = parser.parse(json, 2);
+
+        // then
+        assertThat(value).isEqualTo(12);
     }
 }

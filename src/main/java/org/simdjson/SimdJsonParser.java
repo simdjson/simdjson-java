@@ -11,6 +11,7 @@ public class SimdJsonParser {
     private final StructuralIndexer indexer;
     private final BitIndexes bitIndexes;
     private final JsonIterator jsonIterator;
+    private final SchemaBasedJsonIterator schemaBasedJsonIterator;
     private final byte[] paddedBuffer;
 
     public SimdJsonParser() {
@@ -19,10 +20,20 @@ public class SimdJsonParser {
 
     public SimdJsonParser(int capacity, int maxDepth) {
         bitIndexes = new BitIndexes(capacity);
-        jsonIterator = new JsonIterator(bitIndexes, capacity, maxDepth, PADDING);
+        byte[] stringBuffer = new byte[capacity];
+        jsonIterator = new JsonIterator(bitIndexes, stringBuffer, capacity, maxDepth, PADDING);
+        schemaBasedJsonIterator = new SchemaBasedJsonIterator(bitIndexes, stringBuffer, PADDING);
         paddedBuffer = new byte[capacity];
         reader = new BlockReader(STEP_SIZE);
         indexer = new StructuralIndexer(bitIndexes);
+    }
+
+    public <T> T parse(byte[] buffer, int len, Class<T> expectedType) {
+        stage0(buffer);
+        byte[] padded = padIfNeeded(buffer, len);
+        reset(padded, len);
+        stage1(padded);
+        return schemaBasedJsonIterator.walkDocument(padded, len, expectedType);
     }
 
     public JsonValue parse(byte[] buffer, int len) {
@@ -30,7 +41,7 @@ public class SimdJsonParser {
         byte[] padded = padIfNeeded(buffer, len);
         reset(padded, len);
         stage1(padded);
-        return stage2(padded, len);
+        return jsonIterator.walkDocument(padded, len);
     }
 
     private byte[] padIfNeeded(byte[] buffer, int len) {
@@ -61,9 +72,5 @@ public class SimdJsonParser {
         indexer.step(reader.remainder(), 0, reader.getBlockIndex());
         reader.advance();
         indexer.finish(reader.getBlockIndex());
-    }
-
-    private JsonValue stage2(byte[] buffer, int len) {
-        return jsonIterator.walkDocument(buffer, len);
     }
 }
