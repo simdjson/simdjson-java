@@ -3,11 +3,13 @@ package org.simdjson.testutils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.text.translate.AggregateTranslator;
+import org.apache.commons.text.translate.CharSequenceTranslator;
+import org.apache.commons.text.translate.JavaUnicodeEscaper;
+import org.apache.commons.text.translate.LookupTranslator;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 
 import static java.lang.Character.MAX_CODE_POINT;
 import static java.lang.Character.isBmpCodePoint;
@@ -16,25 +18,17 @@ import static java.util.stream.IntStream.rangeClosed;
 
 public class StringTestData {
 
-    private static final Map<String, String> CONTROL_CHARACTER_ESCAPE = new HashMap<>();
-
-    static {
-        for (int codePoint = 0; codePoint <= 0x001F; codePoint++) {
-            String controlCharacter = String.valueOf((char) codePoint);
-            CONTROL_CHARACTER_ESCAPE.put(controlCharacter, toUnicodeEscape(codePoint));
-        }
-    }
+    public static final CharSequenceTranslator ESCAPE_JSON = new AggregateTranslator(
+            new LookupTranslator(Map.of("\"", "\\\"", "\\", "\\\\")),
+            JavaUnicodeEscaper.below(0x20)
+    );
 
     public static String randomString(int minChars, int maxChars) {
         int stringLen = RandomUtils.nextInt(minChars, maxChars + 1);
-        var string = RandomStringUtils.random(stringLen)
-                .replaceAll("\"", "\\\\\"")
-                .replaceAll("\\\\", "\\\\\\\\");
-        for (Map.Entry<String, String> entry : CONTROL_CHARACTER_ESCAPE.entrySet()) {
-            string = string.replaceAll(entry.getKey(), Matcher.quoteReplacement(entry.getValue()));
-        }
-        System.out.println("Generated string: " + string + " [" + StringEscapeUtils.escapeJava(string) + "]");
-        return string;
+        var rawString = RandomStringUtils.random(stringLen);
+        var jsonString = ESCAPE_JSON.translate(rawString);
+        System.out.println("Generated string: " + jsonString + " [" + StringEscapeUtils.escapeJava(jsonString) + "]");
+        return jsonString;
     }
 
     /**
