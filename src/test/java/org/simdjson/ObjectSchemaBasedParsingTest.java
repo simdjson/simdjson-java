@@ -642,6 +642,25 @@ public class ObjectSchemaBasedParsingTest {
                 .hasMessage("Undefined list element type.");
     }
 
+    @Test
+    public void issue50() {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8("{\"name\": \"John\", \"age\": 30, \"aaa\": 1, \"bbb\": 2, \"ccc\": 3}");
+
+        // when
+        Issue50 object = parser.parse(json, json.length, Issue50.class);
+
+        // then
+        assertThat(object.aaa()).isEqualTo(1);
+        assertThat(object.bbb()).isEqualTo(2);
+        assertThat(object.ccc()).isEqualTo(3);
+    }
+
+    private record Issue50(long aaa, long bbb, long ccc) {
+
+    }
+
     private record RecordWithExplicitFieldNames(@JsonFieldName("ąćśńźż") long firstField,
                                                 @JsonFieldName("\u20A9\u0E3F") long secondField,
                                                 @JsonFieldName("αβγ") long thirdField,
