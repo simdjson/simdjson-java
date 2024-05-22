@@ -51,6 +51,9 @@ class ConstructorArgumentsMap {
         int place = findPlace(buffer, len);
         for (int i = 0; i < capacity; i++) {
             byte[] key = keys[place];
+            if (key == null) {
+                return null;
+            }
             if (Arrays.equals(key, 0, key.length, buffer, 0, len)) {
                 return arguments[place];
             }
