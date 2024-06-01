@@ -1,6 +1,6 @@
 name: CI
 
-on: [ push, pull_request ]
+on: [ pull_request ]
 
 jobs:
   build:
@@ -8,21 +8,22 @@ jobs:
 
     strategy:
       matrix:
-        version: [ 18, 19, 20, 21 ]
+        version: [ 18, 19, 20, 21, 22 ]
+        vector-length: [ 256, 512 ]
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: gradle/wrapper-validation-action@v1
+      - uses: gradle/actions/wrapper-validation@v3
 
       - name: Set up JDK ${{ matrix.version }}
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ matrix.version }}
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Tests
-        run: ./gradlew check
+        run: ./gradlew test${{ matrix.vector-length }}
