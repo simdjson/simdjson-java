@@ -135,6 +135,7 @@ public class JsonStringScannerTest {
         return switch (StructuralIndexer.N_CHUNKS) {
             case 1 -> scanner.next(chunk(str, 0));
             case 2 -> scanner.next(chunk(str, 0), chunk(str, 1));
+            case 4 -> scanner.next(chunk(str, 0), chunk(str, 1), chunk(str, 2), chunk(str, 3));
             default -> throw new RuntimeException("Unsupported chunk count: " + StructuralIndexer.N_CHUNKS);
         };
     }
