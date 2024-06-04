@@ -136,24 +136,20 @@ jmh {
     jvmArgsPrepend = [
             '--add-modules=jdk.incubator.vector'
     ]
-    if (getBooleanProperty('jmh.profilersEnabled', false)) {
-        createDirIfDoesNotExist('./profilers')
-        if (OperatingSystem.current().isLinux()) {
-            def profilerList = [
-                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getLibPath('LD_LIBRARY_PATH')
-            ]
-            if (getBooleanProperty('jmh.jitLogEnabled', false)) {
-                createDirIfDoesNotExist('./profilers/perfasm')
-                profilerList += [
-                        'perfasm:intelSyntax=true;saveLog=true;saveLogTo=./profilers/perfasm'
-                ]
-            }
-            profilers = profilerList
-        } else if (OperatingSystem.current().isMacOsX()) {
-            profilers = [
-                    'async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getLibPath('DYLD_LIBRARY_PATH')
-            ]
+    if (OperatingSystem.current().isLinux()) {
+        def profilerList = []
+        if (getBooleanProperty('jmh.asyncProfilerEnabled', false)) {
+            createDirIfDoesNotExist('./profilers/async')
+            profilerList += ['async:verbose=true;output=flamegraph;event=cpu;dir=./profilers/async;libPath=' + getLibPath('LD_LIBRARY_PATH')]
         }
+        if (getBooleanProperty('jmh.perfAsmEnabled', false)) {
+            createDirIfDoesNotExist('./profilers/perfasm')
+            profilerList += ['perfasm:intelSyntax=true;saveLog=true;saveLogTo=./profilers/perfasm']
+        }
+        if (getBooleanProperty('jmh.perfEnabled', false)) {
+            profilerList += ['perf']
+        }
+        profilers = profilerList
     }
     if (project.hasProperty('jmh.includes')) {
         includes = [project.findProperty('jmh.includes')]

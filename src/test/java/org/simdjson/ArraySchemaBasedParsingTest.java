@@ -21,9 +21,8 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
 import static org.simdjson.testutils.SimdJsonAssertions.assertThat;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class ArraySchemaBasedParsingTest {
 
@@ -483,7 +482,7 @@ public class ArraySchemaBasedParsingTest {
     public void passedLengthSmallerThanNullLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("null"));
+        byte[] json = toUtf8("null");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3, Boolean[].class));

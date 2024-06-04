@@ -11,9 +11,8 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.simdjson.TestUtils.loadTestFile;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
+import static org.simdjson.testutils.TestUtils.loadTestFile;
+import static org.simdjson.testutils.TestUtils.toUtf8PaddedWithSpaces;
 
 public class BenchmarkCorrectnessTest {
 
@@ -74,7 +73,7 @@ public class BenchmarkCorrectnessTest {
         // given
         Tape tape = new Tape(100);
         NumberParser numberParser = new NumberParser();
-        byte[] numberUtf8Bytes = toUtf8(padWithSpaces(input));
+        byte[] numberUtf8Bytes = toUtf8PaddedWithSpaces(input);
 
         // when
         numberParser.parseNumber(numberUtf8Bytes, 0, tape);

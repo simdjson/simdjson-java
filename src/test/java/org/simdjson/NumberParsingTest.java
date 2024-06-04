@@ -14,9 +14,8 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
 import static org.simdjson.testutils.SimdJsonAssertions.assertThat;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class NumberParsingTest {
 
@@ -636,7 +635,7 @@ public class NumberParsingTest {
     public void passedLengthSmallerThanNumberLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("1234"));
+        byte[] json = toUtf8("1234");
 
         // when
         JsonValue value = parser.parse(json, 2);
