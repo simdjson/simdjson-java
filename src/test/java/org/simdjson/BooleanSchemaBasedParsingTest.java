@@ -17,8 +17,7 @@ import org.simdjson.testutils.SchemaBasedRandomValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class BooleanSchemaBasedParsingTest {
 
@@ -552,7 +551,7 @@ public class BooleanSchemaBasedParsingTest {
     public void passedLengthSmallerThanTrueLength(Class<?> expectedType) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("true"));
+        byte[] json = toUtf8("true");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3, expectedType));
@@ -567,7 +566,7 @@ public class BooleanSchemaBasedParsingTest {
     public void passedLengthSmallerThanFalseLength(Class<?> expectedType) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("false"));
+        byte[] json = toUtf8("false");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 4, expectedType));
@@ -581,7 +580,7 @@ public class BooleanSchemaBasedParsingTest {
     public void passedLengthSmallerThanNullLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("null"));
+        byte[] json = toUtf8("null");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3, Boolean.class));

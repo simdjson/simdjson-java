@@ -13,10 +13,9 @@ import java.util.List;
 import static org.apache.commons.text.StringEscapeUtils.unescapeJava;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.simdjson.TestUtils.loadTestFile;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
 import static org.simdjson.testutils.SimdJsonAssertions.assertThat;
+import static org.simdjson.testutils.TestUtils.loadTestFile;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class StringParsingTest {
 
@@ -264,7 +263,7 @@ public class StringParsingTest {
     public void passedLengthSmallerThanStringLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("\"aaaaa\""));
+        byte[] json = toUtf8("\"aaaaa\"");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 6));

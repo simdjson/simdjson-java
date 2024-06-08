@@ -8,9 +8,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.Iterator;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
 import static org.simdjson.testutils.SimdJsonAssertions.assertThat;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class BooleanParsingTest {
 
@@ -95,7 +94,7 @@ public class BooleanParsingTest {
     public void passedLengthSmallerThanTrueLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("true"));
+        byte[] json = toUtf8("true");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3));
@@ -109,7 +108,7 @@ public class BooleanParsingTest {
     public void passedLengthSmallerThanFalseLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("false"));
+        byte[] json = toUtf8("false");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 4));

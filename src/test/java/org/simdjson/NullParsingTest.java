@@ -8,8 +8,7 @@ import java.util.Iterator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class NullParsingTest {
 
@@ -94,7 +93,7 @@ public class NullParsingTest {
     public void passedLengthSmallerThanNullLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("null"));
+        byte[] json = toUtf8("null");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3));

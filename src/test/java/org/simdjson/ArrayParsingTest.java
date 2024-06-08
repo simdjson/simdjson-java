@@ -11,7 +11,7 @@ import java.util.NoSuchElementException;
 
 import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.TestUtils.toUtf8;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 import static org.simdjson.testutils.SimdJsonAssertions.assertThat;
 
 public class ArrayParsingTest {

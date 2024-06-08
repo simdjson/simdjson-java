@@ -27,8 +27,7 @@ import static org.apache.commons.text.StringEscapeUtils.unescapeJava;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class StringSchemaBasedParsingTest {
 
@@ -1331,7 +1330,7 @@ public class StringSchemaBasedParsingTest {
     public void passedLengthSmallerThanNullLength(Class<?> expectedType) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("null"));
+        byte[] json = toUtf8("null");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3, expectedType));
@@ -1345,7 +1344,7 @@ public class StringSchemaBasedParsingTest {
     public void passedLengthSmallerThanStringLength() {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("\"aaaaa\""));
+        byte[] json = toUtf8("\"aaaaa\"");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3, String.class));

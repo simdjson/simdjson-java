@@ -32,8 +32,7 @@ import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.simdjson.TestUtils.padWithSpaces;
-import static org.simdjson.TestUtils.toUtf8;
+import static org.simdjson.testutils.TestUtils.toUtf8;
 
 public class FloatingPointNumberSchemaBasedParsingTest {
 
@@ -1271,7 +1270,7 @@ public class FloatingPointNumberSchemaBasedParsingTest {
     public void passedLengthSmallerThanNullLength(Class<?> expectedType) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("null"));
+        byte[] json = toUtf8("null");
 
         // when
         JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, 3, expectedType));
@@ -1286,7 +1285,7 @@ public class FloatingPointNumberSchemaBasedParsingTest {
     public void passedLengthSmallerThanNumberLength(Class<?> expectedType) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
-        byte[] json = toUtf8(padWithSpaces("1.234"));
+        byte[] json = toUtf8("1.234");
 
         // when
         Object value = parser.parse(json, 3, expectedType);
