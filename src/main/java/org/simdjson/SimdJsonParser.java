@@ -24,7 +24,12 @@ public class SimdJsonParser {
         paddedBuffer = new byte[capacity];
         indexer = new StructuralIndexer(bitIndexes);
     }
-
+    BitIndexes buildBitIndex (byte[] buffer, int len) {
+        byte[] padded = padIfNeeded(buffer, len);
+        reset();
+        stage1(padded, len);
+        return bitIndexes;
+    }
     public <T> T parse(byte[] buffer, int len, Class<T> expectedType) {
         byte[] padded = padIfNeeded(buffer, len);
         reset();

@@ -1,6 +1,8 @@
 package org.simdjson;
 
-class BitIndexes {
+import java.util.Arrays;
+
+public class BitIndexes {
 
     private final int[] indexes;
 
@@ -44,8 +46,8 @@ class BitIndexes {
         return bits & (bits - 1);
     }
 
-    void advance() {
-        readIdx++;
+    int advance() {
+        return indexes[readIdx++];
     }
 
     int getAndAdvance() {
