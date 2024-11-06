@@ -52,13 +52,8 @@ class OnDemandJsonIterator {
         byte character = buffer[idx];
 
         switch (character) {
-            case '[', '{', ':', ',':
+            case '[', '{', ',':
                 break;
-            case '"':
-                if (buffer[indexer.peek()] == ':') {
-                    indexer.advance(); // skip ':'
-                    break;
-                }
             default:
                 depth--;
                 if (depth <= parentDepth) {
