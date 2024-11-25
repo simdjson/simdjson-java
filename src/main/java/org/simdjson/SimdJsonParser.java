@@ -48,7 +48,6 @@ public class SimdJsonParser {
     }
 
     private void reset() {
-        bitIndexes.reset();
         jsonIterator.reset();
     }
 
