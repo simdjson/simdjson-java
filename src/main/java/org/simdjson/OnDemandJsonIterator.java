@@ -443,6 +443,21 @@ class OnDemandJsonIterator {
         return numberParser.parseFloat(buffer, len, idx);
     }
 
+    String getOrCompressAsString() {
+        depth--;
+        int idx = indexer.getAndAdvance();
+        if (buffer[idx] == '"') {
+            return new String(buffer, idx + 1, indexer.peek() - idx - 2);
+        } else {
+            return new String(buffer, idx, indexer.peek() - idx);
+        }
+    }
+
+    String getObjectKey() {
+        int idx = indexer.getAndAdvance();
+        return new String(buffer, idx + 1, indexer.peek() - idx - 2);
+    }
+
     int getRootString(byte[] stringBuffer) {
         depth--;
         int idx = indexer.getAndAdvance();
