@@ -8,13 +8,13 @@ jobs:
 
     strategy:
       matrix:
-        version: [ 18, 19, 20, 21, 22 ]
+        version: [ 18, 19, 20, 21, 22, 23 ]
         vector-length: [ 256, 512 ]
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: gradle/actions/wrapper-validation@v3
+      - uses: gradle/actions/wrapper-validation@v4
 
       - name: Set up JDK ${{ matrix.version }}
         uses: actions/setup-java@v4
@@ -23,7 +23,7 @@ jobs:
           java-version: ${{ matrix.version }}
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Tests
         run: ./gradlew test${{ matrix.vector-length }}
