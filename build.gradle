@@ -33,9 +33,9 @@ java {
     // It seems that specifying the minimum supported Java version while allowing the use of newer
     // ones isn't possible in Gradle. To test the library against multiple Java versions, the
     // workaround proposed in https://github.com/gradle/gradle/issues/16256 has been applied:
-    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_18)) {
+    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_24)) {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(18)
+            languageVersion = JavaLanguageVersion.of(24)
         }
     }
     withJavadocJar()

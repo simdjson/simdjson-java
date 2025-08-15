@@ -11,8 +11,8 @@ import static jdk.incubator.vector.VectorOperators.EQ;
 import static jdk.incubator.vector.VectorOperators.LSHL;
 import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.NE;
-import static jdk.incubator.vector.VectorOperators.UNSIGNED_GE;
-import static jdk.incubator.vector.VectorOperators.UNSIGNED_GT;
+import static jdk.incubator.vector.VectorOperators.UGE;
+import static jdk.incubator.vector.VectorOperators.UGT;
 import static jdk.incubator.vector.VectorShuffle.iota;
 import static org.simdjson.VectorUtils.BYTE_SPECIES;
 import static org.simdjson.VectorUtils.INT_SPECIES;
@@ -65,7 +65,7 @@ class Utf8Validator {
             if (chunk.and(ALL_ASCII_MASK).compare(EQ, 0).allTrue()) {
                 errors |= previousIncomplete;
             } else {
-                previousIncomplete = chunk.compare(UNSIGNED_GE, INCOMPLETE_CHECK).toLong();
+                previousIncomplete = chunk.compare(UGE, INCOMPLETE_CHECK).toLong();
                 // Shift the input forward by four bytes to make space for the previous four bytes.
                 // The previous three bytes are required for validation, pulling in the last integer
                 // will give the previous four bytes. The switch to integer vectors is to allow for
@@ -97,13 +97,13 @@ class Utf8Validator {
                         .or(chunkWithPreviousFourBytes.lanewise(LSHR, TWO_BYTES_SIZE))
                         .reinterpretAsBytes();
                 // The minimum leading byte of 3-byte sequences is always greater than the maximum leading byte of 2-byte sequences.
-                VectorMask<Byte> is3ByteLead = previousTwoBytes.compare(UNSIGNED_GT, MAX_2_LEADING_BYTE);
+                VectorMask<Byte> is3ByteLead = previousTwoBytes.compare(UGT, MAX_2_LEADING_BYTE);
                 ByteVector previousThreeBytes = chunkAsInts
                         .lanewise(LSHL, THREE_BYTES_SIZE)
                         .or(chunkWithPreviousFourBytes.lanewise(LSHR, Byte.SIZE))
                         .reinterpretAsBytes();
                 // The minimum leading byte of 4-byte sequences is always greater than the maximum leading byte of 3-byte sequences.
-                VectorMask<Byte> is4ByteLead = previousThreeBytes.compare(UNSIGNED_GT, MAX_3_LEADING_BYTE);
+                VectorMask<Byte> is4ByteLead = previousThreeBytes.compare(UGT, MAX_3_LEADING_BYTE);
                 // The firstCheck vector contains 0x80 values on continuation byte indexes.
                 // The leading bytes of 3 and 4-byte sequences should match up with these indexes and zero them out.
                 ByteVector secondCheck = firstCheck.add((byte) 0x80, is3ByteLead.or(is4ByteLead));
@@ -117,7 +117,7 @@ class Utf8Validator {
         ByteVector chunk = ByteVector.fromArray(BYTE_SPECIES, buffer, offset, remainingBytes);
         if (!chunk.and(ALL_ASCII_MASK).compare(EQ, 0).allTrue()) {
             IntVector chunkAsInts = chunk.reinterpretAsInts();
-            previousIncomplete = chunk.compare(UNSIGNED_GE, INCOMPLETE_CHECK).toLong();
+            previousIncomplete = chunk.compare(UGE, INCOMPLETE_CHECK).toLong();
             // Shift the input forward by four bytes to make space for the previous four bytes.
             // The previous three bytes are required for validation, pulling in the last integer
             // will give the previous four bytes. The switch to integer vectors is to allow for
@@ -149,13 +149,13 @@ class Utf8Validator {
                     .or(chunkWithPreviousFourBytes.lanewise(LSHR, TWO_BYTES_SIZE))
                     .reinterpretAsBytes();
             // The minimum leading byte of 3-byte sequences is always greater than the maximum leading byte of 2-byte sequences.
-            VectorMask<Byte> is3ByteLead = previousTwoBytes.compare(UNSIGNED_GT, MAX_2_LEADING_BYTE);
+            VectorMask<Byte> is3ByteLead = previousTwoBytes.compare(UGT, MAX_2_LEADING_BYTE);
             ByteVector previousThreeBytes = chunkAsInts
                     .lanewise(LSHL, THREE_BYTES_SIZE)
                     .or(chunkWithPreviousFourBytes.lanewise(LSHR, Byte.SIZE))
                     .reinterpretAsBytes();
             // The minimum leading byte of 4-byte sequences is always greater than the maximum leading byte of 3-byte sequences.
-            VectorMask<Byte> is4ByteLead = previousThreeBytes.compare(UNSIGNED_GT, MAX_3_LEADING_BYTE);
+            VectorMask<Byte> is4ByteLead = previousThreeBytes.compare(UGT, MAX_3_LEADING_BYTE);
             // The firstCheck vector contains 0x80 values on continuation byte indexes.
             // The leading bytes of 3 and 4-byte sequences should match up with these indexes and zero them out.
             ByteVector secondCheck = firstCheck.add((byte) 0x80, is3ByteLead.or(is4ByteLead));
