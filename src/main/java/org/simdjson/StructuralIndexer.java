@@ -7,7 +7,7 @@ import java.util.Arrays;
 
 import static jdk.incubator.vector.ByteVector.SPECIES_256;
 import static jdk.incubator.vector.ByteVector.SPECIES_512;
-import static jdk.incubator.vector.VectorOperators.UNSIGNED_LE;
+import static jdk.incubator.vector.VectorOperators.ULE;
 
 class StructuralIndexer {
 
@@ -88,8 +88,8 @@ class StructuralIndexer {
                 escaped = (EVEN_BITS_MASK ^ invertMask) & followsEscape;
             }
 
-            long unescaped0 = chunk0.compare(UNSIGNED_LE, LAST_CONTROL_CHARACTER).toLong();
-            long unescaped1 = chunk1.compare(UNSIGNED_LE, LAST_CONTROL_CHARACTER).toLong();
+            long unescaped0 = chunk0.compare(ULE, LAST_CONTROL_CHARACTER).toLong();
+            long unescaped1 = chunk1.compare(ULE, LAST_CONTROL_CHARACTER).toLong();
             long unescaped = unescaped0 | (unescaped1 << 32);
 
             long quote0 = chunk0.eq(QUOTE).toLong();
@@ -148,8 +148,8 @@ class StructuralIndexer {
             escaped = (EVEN_BITS_MASK ^ invertMask) & followsEscape;
         }
 
-        long unescaped0 = chunk0.compare(UNSIGNED_LE, LAST_CONTROL_CHARACTER).toLong();
-        long unescaped1 = chunk1.compare(UNSIGNED_LE, LAST_CONTROL_CHARACTER).toLong();
+        long unescaped0 = chunk0.compare(ULE, LAST_CONTROL_CHARACTER).toLong();
+        long unescaped1 = chunk1.compare(ULE, LAST_CONTROL_CHARACTER).toLong();
         long unescaped = unescaped0 | (unescaped1 << 32);
 
         long quote0 = chunk0.eq(QUOTE).toLong();
@@ -228,7 +228,7 @@ class StructuralIndexer {
                 escaped = (EVEN_BITS_MASK ^ invertMask) & followsEscape;
             }
 
-            long unescaped = chunk.compare(UNSIGNED_LE, LAST_CONTROL_CHARACTER).toLong();
+            long unescaped = chunk.compare(ULE, LAST_CONTROL_CHARACTER).toLong();
             long quote = chunk.eq(QUOTE).toLong() & ~escaped;
             long inString = prefixXor(quote) ^ prevInString;
             prevInString = inString >> 63;
@@ -271,7 +271,7 @@ class StructuralIndexer {
             escaped = (EVEN_BITS_MASK ^ invertMask) & followsEscape;
         }
 
-        long unescaped = chunk.compare(UNSIGNED_LE, LAST_CONTROL_CHARACTER).toLong();
+        long unescaped = chunk.compare(ULE, LAST_CONTROL_CHARACTER).toLong();
         long quote = chunk.eq(QUOTE).toLong() & ~escaped;
         long inString = prefixXor(quote) ^ prevInString;
         prevInString = inString >> 63;
