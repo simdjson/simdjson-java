@@ -40,8 +40,6 @@ class Utf8Validator {
     private static final byte TWO_CONTINUATIONS = (byte) (1 << 7);
     private static final byte MAX_2_LEADING_BYTE = (byte) 0b110_11111;
     private static final byte MAX_3_LEADING_BYTE = (byte) 0b1110_1111;
-    private static final int TWO_BYTES_SIZE = Byte.SIZE * 2;
-    private static final int THREE_BYTES_SIZE = Byte.SIZE * 3;
     private static final ByteVector BYTE_1_HIGH_LOOKUP = createByte1HighLookup();
     private static final ByteVector BYTE_1_LOW_LOOKUP = createByte1LowLookup();
     private static final ByteVector BYTE_2_HIGH_LOOKUP = createByte2HighLookup();
@@ -52,12 +50,12 @@ class Utf8Validator {
     private static final int STEP_SIZE = BYTE_SPECIES.vectorByteSize();
 
     static void validate(byte[] buffer, int length) {
-        long previousIncomplete = 0;
-        long errors = 0;
-        int previousFourUtf8Bytes = 0;
-
-        int loopBound = BYTE_SPECIES.loopBound(length);
         int offset = 0;
+        long errors = 0;
+        long previousIncomplete = 0;
+        int loopBound = BYTE_SPECIES.loopBound(length);
+        ByteVector previousChunk = ByteVector.broadcast(BYTE_SPECIES, 0);
+
         for (; offset < loopBound; offset += STEP_SIZE) {
             ByteVector chunk = ByteVector.fromArray(BYTE_SPECIES, buffer, offset);
             IntVector chunkAsInts = chunk.reinterpretAsInts();
@@ -66,18 +64,9 @@ class Utf8Validator {
                 errors |= previousIncomplete;
             } else {
                 previousIncomplete = chunk.compare(UGE, INCOMPLETE_CHECK).toLong();
-                // Shift the input forward by four bytes to make space for the previous four bytes.
-                // The previous three bytes are required for validation, pulling in the last integer
-                // will give the previous four bytes. The switch to integer vectors is to allow for
-                // integer shifting instead of the more expensive shuffle / slice operations.
-                IntVector chunkWithPreviousFourBytes = chunkAsInts
-                        .rearrange(FOUR_BYTES_FORWARD_SHIFT)
-                        .withLane(0, previousFourUtf8Bytes);
-                // Shift the current input forward by one byte to include one byte from the previous chunk.
-                ByteVector previousOneByte = chunkAsInts
-                        .lanewise(LSHL, Byte.SIZE)
-                        .or(chunkWithPreviousFourBytes.lanewise(LSHR, THREE_BYTES_SIZE))
-                        .reinterpretAsBytes();
+                // Pull in last byte from previous chunk.
+                ByteVector previousOneByte = previousChunk.slice(BYTE_SPECIES.length() - 1, chunk);
+
                 ByteVector byte2HighNibbles = chunkAsInts.lanewise(LSHR, 4)
                         .reinterpretAsBytes()
                         .and(LOW_NIBBLE_MASK);
@@ -85,23 +74,21 @@ class Utf8Validator {
                         .lanewise(LSHR, 4)
                         .reinterpretAsBytes()
                         .and(LOW_NIBBLE_MASK);
+
                 ByteVector byte1LowNibbles = previousOneByte.and(LOW_NIBBLE_MASK);
                 ByteVector byte1HighState = byte1HighNibbles.selectFrom(BYTE_1_HIGH_LOOKUP);
                 ByteVector byte1LowState = byte1LowNibbles.selectFrom(BYTE_1_LOW_LOOKUP);
                 ByteVector byte2HighState = byte2HighNibbles.selectFrom(BYTE_2_HIGH_LOOKUP);
                 ByteVector firstCheck = byte1HighState.and(byte1LowState).and(byte2HighState);
+
                 // All remaining checks are for invalid 3 and 4-byte sequences, which either have too many
                 // continuation bytes or not enough.
-                ByteVector previousTwoBytes = chunkAsInts
-                        .lanewise(LSHL, TWO_BYTES_SIZE)
-                        .or(chunkWithPreviousFourBytes.lanewise(LSHR, TWO_BYTES_SIZE))
-                        .reinterpretAsBytes();
+                ByteVector previousTwoBytes = previousChunk.slice(BYTE_SPECIES.length() - 2, chunk);
+
                 // The minimum leading byte of 3-byte sequences is always greater than the maximum leading byte of 2-byte sequences.
                 VectorMask<Byte> is3ByteLead = previousTwoBytes.compare(UGT, MAX_2_LEADING_BYTE);
-                ByteVector previousThreeBytes = chunkAsInts
-                        .lanewise(LSHL, THREE_BYTES_SIZE)
-                        .or(chunkWithPreviousFourBytes.lanewise(LSHR, Byte.SIZE))
-                        .reinterpretAsBytes();
+                ByteVector previousThreeBytes = previousChunk.slice(BYTE_SPECIES.length() - 3, chunk);
+
                 // The minimum leading byte of 4-byte sequences is always greater than the maximum leading byte of 3-byte sequences.
                 VectorMask<Byte> is4ByteLead = previousThreeBytes.compare(UGT, MAX_3_LEADING_BYTE);
                 // The firstCheck vector contains 0x80 values on continuation byte indexes.
@@ -109,7 +96,7 @@ class Utf8Validator {
                 ByteVector secondCheck = firstCheck.add((byte) 0x80, is3ByteLead.or(is4ByteLead));
                 errors |= secondCheck.compare(NE, 0).toLong();
             }
-            previousFourUtf8Bytes = chunkAsInts.lane(INT_SPECIES.length() - 1);
+            previousChunk = chunk;
         }
 
         // If the input file doesn't align with the vector width, pad the missing bytes with zeros.
@@ -118,18 +105,8 @@ class Utf8Validator {
         if (!chunk.and(ALL_ASCII_MASK).compare(EQ, 0).allTrue()) {
             IntVector chunkAsInts = chunk.reinterpretAsInts();
             previousIncomplete = chunk.compare(UGE, INCOMPLETE_CHECK).toLong();
-            // Shift the input forward by four bytes to make space for the previous four bytes.
-            // The previous three bytes are required for validation, pulling in the last integer
-            // will give the previous four bytes. The switch to integer vectors is to allow for
-            // integer shifting instead of the more expensive shuffle / slice operations.
-            IntVector chunkWithPreviousFourBytes = chunkAsInts
-                    .rearrange(FOUR_BYTES_FORWARD_SHIFT)
-                    .withLane(0, previousFourUtf8Bytes);
-            // Shift the current input forward by one byte to include one byte from the previous chunk.
-            ByteVector previousOneByte = chunkAsInts
-                    .lanewise(LSHL, Byte.SIZE)
-                    .or(chunkWithPreviousFourBytes.lanewise(LSHR, THREE_BYTES_SIZE))
-                    .reinterpretAsBytes();
+            // Pull in last byte from previous chunk.
+            ByteVector previousOneByte = previousChunk.slice(BYTE_SPECIES.length() - 1, chunk);
             ByteVector byte2HighNibbles = chunkAsInts.lanewise(LSHR, 4)
                     .reinterpretAsBytes()
                     .and(LOW_NIBBLE_MASK);
@@ -144,17 +121,13 @@ class Utf8Validator {
             ByteVector firstCheck = byte1HighState.and(byte1LowState).and(byte2HighState);
             // All remaining checks are for invalid 3 and 4-byte sequences, which either have too many
             // continuation bytes or not enough.
-            ByteVector previousTwoBytes = chunkAsInts
-                    .lanewise(LSHL, TWO_BYTES_SIZE)
-                    .or(chunkWithPreviousFourBytes.lanewise(LSHR, TWO_BYTES_SIZE))
-                    .reinterpretAsBytes();
+            // Pull in last two bytes from previous chunk.
+            ByteVector previousTwoBytes = previousChunk.slice(BYTE_SPECIES.length() - 2, chunk);
             // The minimum leading byte of 3-byte sequences is always greater than the maximum leading byte of 2-byte sequences.
             VectorMask<Byte> is3ByteLead = previousTwoBytes.compare(UGT, MAX_2_LEADING_BYTE);
-            ByteVector previousThreeBytes = chunkAsInts
-                    .lanewise(LSHL, THREE_BYTES_SIZE)
-                    .or(chunkWithPreviousFourBytes.lanewise(LSHR, Byte.SIZE))
-                    .reinterpretAsBytes();
+            ByteVector previousThreeBytes = previousChunk.slice(BYTE_SPECIES.length() - 3, chunk);
             // The minimum leading byte of 4-byte sequences is always greater than the maximum leading byte of 3-byte sequences.
+            // Pull in last three bytes from previous chunk.
             VectorMask<Byte> is4ByteLead = previousThreeBytes.compare(UGT, MAX_3_LEADING_BYTE);
             // The firstCheck vector contains 0x80 values on continuation byte indexes.
             // The leading bytes of 3 and 4-byte sequences should match up with these indexes and zero them out.
