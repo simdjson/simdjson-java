@@ -56,7 +56,7 @@ record SimdJsonTwitter(List<SimdJsonStatus> statuses) {
 The library is available in the [Maven Central Repository](https://mvnrepository.com/artifact/org.simdjson/simdjson-java). 
 To include it in your project, add the following dependency to the `build.gradle` file:
 ```groovy
-implementation("org.simdjson:simdjson-java:0.1.0")
+implementation("org.simdjson:simdjson-java:0.4.0")
 ```
 
 or to the `pom.xml` file:
@@ -64,7 +64,7 @@ or to the `pom.xml` file:
 <dependency>
     <groupId>org.simdjson</groupId>
     <artifactId>simdjson-java</artifactId>
-    <version>0.1.0</version>
+    <version>0.4.0</version>
 </dependency>
 ```
 
