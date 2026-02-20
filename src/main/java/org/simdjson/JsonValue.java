@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.simdjson.Tape.DOUBLE;
 import static org.simdjson.Tape.FALSE_VALUE;
 import static org.simdjson.Tape.INT64;
@@ -13,7 +14,6 @@ import static org.simdjson.Tape.START_ARRAY;
 import static org.simdjson.Tape.START_OBJECT;
 import static org.simdjson.Tape.STRING;
 import static org.simdjson.Tape.TRUE_VALUE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class JsonValue {
 
@@ -82,6 +82,20 @@ public class JsonValue {
         return getString(tapeIdx);
     }
 
+    /**
+     * Reads a segment of bytes described by the internal state of the current object
+     * and passes it to the provided {@link JsonValueByteConsumer} for processing.
+     *
+     * @param consumer the {@link JsonValueByteConsumer} that processes the extracted bytes;
+     *                 it will receive a segment of the internal {@code stringBuffer} array
+     *                 defined by the current tape index and length
+     */
+    public void acceptBytes(JsonValueByteConsumer consumer) {
+        int stringBufferIdx = (int) tape.getValue(tapeIdx);
+        int len = IntegerUtils.toInt(stringBuffer, stringBufferIdx);
+        consumer.acceptBytes(stringBuffer, stringBufferIdx + Integer.BYTES, len);
+    }
+
     private String getString(int tapeIdx) {
         int stringBufferIdx = (int) tape.getValue(tapeIdx);
         int len = IntegerUtils.toInt(stringBuffer, stringBufferIdx);
@@ -90,6 +104,10 @@ public class JsonValue {
 
     public JsonValue get(String name) {
         byte[] bytes = name.getBytes(UTF_8);
+        return get(bytes);
+    }
+
+    public JsonValue get(byte[] name) {
         int idx = tapeIdx + 1;
         int endIdx = tape.getMatchingBraceIndex(tapeIdx) - 1;
         while (idx < endIdx) {
@@ -99,7 +117,7 @@ public class JsonValue {
             idx = tape.computeNextIndex(valIdx);
             int stringBufferFromIdx = stringBufferIdx + Integer.BYTES;
             int stringBufferToIdx = stringBufferFromIdx + len;
-            if (Arrays.compare(bytes, 0, bytes.length, stringBuffer, stringBufferFromIdx, stringBufferToIdx) == 0) {
+            if (Arrays.compare(name, 0, name.length, stringBuffer, stringBufferFromIdx, stringBufferToIdx) == 0) {
                 return new JsonValue(tape, valIdx, stringBuffer, buffer);
             }
         }
@@ -217,5 +235,17 @@ public class JsonValue {
         public JsonValue setValue(JsonValue value) {
             throw new UnsupportedOperationException("Object fields are immutable");
         }
+    }
+
+    public interface JsonValueByteConsumer {
+
+        /**
+         * Consumes a segment of bytes from the provided array for processing.
+         *
+         * @param bytes  the array of bytes to be processed
+         * @param offset the starting position in the array from which bytes should be read
+         * @param length the number of bytes to be read from the array, starting at the offset
+         */
+        void acceptBytes(byte[] bytes, int offset, int length);
     }
 }

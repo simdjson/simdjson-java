@@ -1,6 +1,4 @@
-import me.champeau.jmh.JmhBytecodeGeneratorTask
 import org.gradle.internal.os.OperatingSystem
-
 import java.time.Duration
 
 plugins {
@@ -81,6 +79,9 @@ dependencies {
     jmhImplementation group: 'com.google.guava', name: 'guava', version: '33.4.0-jre'
     compileOnly group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-macros_2.13', version: jsoniterScalaVersion
 
+    jmhImplementation group: 'org.openjdk.jmh', name: 'jmh-core', version: '1.37'
+    jmhImplementation group: 'org.openjdk.jmh', name: 'jmh-generator-annprocess', version: '1.37'
+    jmhAnnotationProcessor group: 'org.openjdk.jmh', name: 'jmh-generator-annprocess', version: '1.37'
     testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.27.3'
     testImplementation group: 'org.apache.commons', name: 'commons-text', version: '1.13.0'
     testImplementation group: 'org.junit-pioneer', name: 'junit-pioneer', version: '2.3.0'
@@ -123,7 +124,7 @@ tasks.register('downloadTestData', Exec) {
     }
 }
 
-// Configuration common to ALL Test tasks (including 'test', 'test256', 'test512')
+// Configuration common to ALL Test tasks
 tasks.withType(Test).configureEach {
     dependsOn tasks.named('downloadTestData')
 
@@ -171,7 +172,8 @@ tasks.named('check') {
     dependsOn tasks.named('test512')
 }
 
-tasks.withType(JmhBytecodeGeneratorTask).configureEach {
+// Fix: Use Fully Qualified Name here instead of importing it at the top
+tasks.withType(me.champeau.jmh.JmhBytecodeGeneratorTask).configureEach {
     jvmArgs.set(["--add-modules=jdk.incubator.vector"])
 }
 
