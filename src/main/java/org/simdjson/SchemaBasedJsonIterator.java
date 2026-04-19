@@ -28,7 +28,6 @@ class SchemaBasedJsonIterator {
     @SuppressWarnings("unchecked")
     <T> T walkDocument(byte[] padded, int len, Class<T> expectedType) {
         jsonIterator.init(padded, len);
-        classResolver.reset();
 
         ResolvedClass resolvedExpectedClass = classResolver.resolveClass(expectedType);
         return switch (resolvedExpectedClass.getClassCategory()) {

@@ -71,7 +71,7 @@ java {
 
 ext {
     junitVersion = '5.12.0'
-    jsoniterScalaVersion = '2.33.2'
+    jsoniterScalaVersion = '2.38.9'
 }
 
 dependencies {
