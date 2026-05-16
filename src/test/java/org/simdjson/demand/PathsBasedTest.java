@@ -4,6 +4,7 @@ import static org.simdjson.testutils.SimdJsonAssertions.assertThat;
 import static org.simdjson.testutils.TestUtils.toUtf8;
 
 import org.junit.jupiter.api.Test;
+import org.simdjson.JsonParsingException;
 import org.simdjson.PathsBasedJsonParser;
 
 public class PathsBasedTest {
@@ -77,4 +78,65 @@ public class PathsBasedTest {
         assertThat(result[7]).isEqualTo(5);
     }
 
+    @Test
+    public void testResultArrayIsIndependentAcrossParseCalls() {
+        // Bug fix verification: a previous implementation reused the same result array, so the
+        // reference returned from the first parse() would be silently overwritten by the second one.
+        PathsBasedJsonParser parser = new PathsBasedJsonParser("a:INT", "b:INT");
+
+        byte[] firstJson = toUtf8("{\"a\":1,\"b\":2}");
+        Object[] first = parser.parse(firstJson, firstJson.length);
+
+        byte[] secondJson = toUtf8("{\"a\":10,\"b\":20}");
+        Object[] second = parser.parse(secondJson, secondJson.length);
+
+        assertThat(first[0]).isEqualTo(1);
+        assertThat(first[1]).isEqualTo(2);
+        assertThat(second[0]).isEqualTo(10);
+        assertThat(second[1]).isEqualTo(20);
+    }
+
+    @Test
+    public void testObjectLeafDoesNotIncludeTrailingWhitespace() {
+        // Bug fix verification: when extracting an object/array leaf as a raw string, the slice must
+        // end at its closing bracket (not at the next structural element).
+        byte[] json = toUtf8("{\"a\": {\"x\": 1}   , \"b\": 2}");
+        PathsBasedJsonParser parser = new PathsBasedJsonParser("a", "b:INT");
+        Object[] result = parser.parse(json, json.length);
+        assertThat(result[0]).isEqualTo("{\"x\": 1}");
+        assertThat(result[1]).isEqualTo(2);
+    }
+
+    @Test
+    public void testArrayLeafDoesNotIncludeTrailingWhitespace() {
+        byte[] json = toUtf8("{\"a\": [1, 2, 3]   , \"b\": 2}");
+        PathsBasedJsonParser parser = new PathsBasedJsonParser("a", "b:INT");
+        Object[] result = parser.parse(json, json.length);
+        assertThat(result[0]).isEqualTo("[1, 2, 3]");
+        assertThat(result[1]).isEqualTo(2);
+    }
+
+    @Test
+    public void testDuplicateKeysDoNotCauseEarlyExit() {
+        // Bug fix verification: a duplicate key used to make `collected` advance twice, causing the
+        // parser to terminate the loop before reaching later requested fields.
+        byte[] json = toUtf8("{\"a\":1,\"a\":2,\"b\":3}");
+        PathsBasedJsonParser parser = new PathsBasedJsonParser("a:INT", "b:INT");
+        Object[] result = parser.parse(json, json.length);
+        // Last occurrence wins, matching the behavior of most JSON parsers.
+        assertThat(result[0]).isEqualTo(2);
+        assertThat(result[1]).isEqualTo(3);
+    }
+
+    @Test
+    public void testInvalidRootThrowsJsonParsingException() {
+        byte[] json = toUtf8("\"just a string\"");
+        PathsBasedJsonParser parser = new PathsBasedJsonParser("a");
+        try {
+            parser.parse(json, json.length);
+        } catch (JsonParsingException expected) {
+            return;
+        }
+        throw new AssertionError("expected JsonParsingException for non-object/array root");
+    }
 }

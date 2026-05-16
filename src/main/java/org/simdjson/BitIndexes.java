@@ -67,6 +67,16 @@ class BitIndexes {
         return indexes[readIdx];
     }
 
+    /**
+     * Returns the offset that was last consumed by {@link #getAndAdvance()} or {@link #advance()}.
+     * Useful when callers need to know where a previously consumed structural character (e.g. {@code '}'} or {@code ']'})
+     * is located in the underlying buffer.
+     */
+    int previous() {
+        assert readIdx >= 1;
+        return indexes[readIdx - 1];
+    }
+
     boolean hasNext() {
         return writeIdx > readIdx;
     }

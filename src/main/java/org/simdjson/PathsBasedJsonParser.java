@@ -2,7 +2,50 @@ package org.simdjson;
 
 import java.util.Arrays;
 
-public class PathsBasedJsonParser {
+/**
+ * A JSON parser that extracts a fixed set of paths from each input document and returns their
+ * scalar/raw values directly, without ever materializing a full JSON tree.
+ *
+ * <p>It is intended for "JSON-tuple" workloads where the schema is known up-front and only a small
+ * subset of fields needs to be projected out of potentially large documents - for example column
+ * extraction in OLAP / streaming pipelines.
+ *
+ * <p><b>Path syntax</b>
+ * <ul>
+ *     <li>Object fields are separated by {@code .}, e.g. {@code "a.b.c"}.</li>
+ *     <li>Array indices use {@code [N]}, e.g. {@code "items.[0].name"}.</li>
+ *     <li>An optional type suffix can be appended with {@code :TYPE} where TYPE is one of
+ *     {@code STRING, INT, LONG, DOUBLE, FLOAT, BOOLEAN, SHORT, BYTE, CHAR}
+ *     (or their {@code *_PRIMITIVE} variants which require the value to be non-null).
+ *     Default is {@code STRING}.</li>
+ *     <li>Literal square brackets inside an object key are escaped by doubling them - {@code [[ }
+ *     and {@code ]]} stand for {@code [} and {@code ]} respectively.</li>
+ * </ul>
+ *
+ * <p><b>Examples</b>
+ * <pre>{@code
+ * var parser = new PathsBasedJsonParser("user.id:LONG", "user.name", "items.[0].price:DOUBLE");
+ * Object[] row = parser.parse(json, json.length);
+ * long   id    = (long)   row[0];
+ * String name  = (String) row[1];
+ * double price = (double) row[2];
+ * }</pre>
+ *
+ * <p><b>Result semantics</b>: {@link #parse(byte[], int)} returns a freshly-allocated array each
+ * call, so callers may safely hold on to it across subsequent {@code parse()} invocations.
+ * Missing paths produce a {@code null} slot in the result.
+ *
+ * <p><b>Thread safety</b>: instances are <i>not</i> thread-safe; create one parser per thread.
+ *
+ * <p><b>Known limitations</b>
+ * <ul>
+ *     <li>JSON unicode ({@code &#92;uXXXX}) and other backslash escapes inside string values and
+ *     object keys are <em>not</em> decoded for {@code STRING} leaves and key matching - the raw
+ *     UTF-8 bytes are returned/compared.</li>
+ *     <li>Input documents larger than {@code 34 MiB} are not supported (the indexer buffer is fixed).</li>
+ * </ul>
+ */
+public final class PathsBasedJsonParser {
 
     private static final int PADDING = 64;
     private static final int DEFAULT_CAPACITY = 34 * 1024 * 1024; // we should be able to handle jsons <= 34MiB
@@ -14,7 +57,6 @@ public class PathsBasedJsonParser {
     private static final String PATH_DELIMITER = "\\.";
     private static final ResolvedClass.ResolvedClassCategory DEFAULT_TYPE = ResolvedClass.ResolvedClassCategory.STRING;
 
-    private final Object[] emptyResult;
     private final Object[] result;
     private final OnDemandJsonValue[] row;
     private final StructuralIndexer indexer;
@@ -27,27 +69,31 @@ public class PathsBasedJsonParser {
     private OnDemandJsonValue ptr;
     private byte[] padded;
 
-    public PathsBasedJsonParser(String... args) {
-        if (args == null) {
+    /**
+     * Builds a parser pre-configured with the given paths. The order of {@code paths} determines
+     * the index of each value in the array returned by {@link #parse(byte[], int)}.
+     *
+     * @param paths path expressions; see class javadoc for syntax
+     */
+    public PathsBasedJsonParser(String... paths) {
+        if (paths == null) {
             throw new IllegalArgumentException("paths must not be null");
         }
         this.bitIndexes = new BitIndexes(DEFAULT_CAPACITY);
         this.indexer = new StructuralIndexer(bitIndexes);
         this.jsonIterator = new OnDemandJsonIterator(bitIndexes, PADDING);
-        this.emptyResult = new Object[args.length];
-        Arrays.fill(this.emptyResult, null);
-        this.result = new Object[args.length];
+        this.result = new Object[paths.length];
         this.paddedBuffer = new byte[DEFAULT_CAPACITY];
-        this.row = new OnDemandJsonValue[args.length];
-        constructPathTree(args);
+        this.row = new OnDemandJsonValue[paths.length];
+        constructPathTree(paths);
     }
 
-    private void constructPathTree(String... args) {
-        for (int i = 0; i < args.length; i++) {
-            if (args[i] == null || args[i].isEmpty()) {
+    private void constructPathTree(String... paths) {
+        for (int i = 0; i < paths.length; i++) {
+            if (paths[i] == null || paths[i].isEmpty()) {
                 throw new IllegalArgumentException("path at index " + i + " is null or empty");
             }
-            String[] pathAndType = args[i].split(TYPE_DELIMITER);
+            String[] pathAndType = paths[i].split(TYPE_DELIMITER);
             ResolvedClass.ResolvedClassCategory type = DEFAULT_TYPE;
             if (pathAndType.length >= 2) {
                 type = ResolvedClass.ResolvedClassCategory.valueOf(pathAndType[1]);
@@ -76,9 +122,18 @@ public class PathsBasedJsonParser {
         }
     }
 
+    /**
+     * Parses the JSON in {@code buffer[0..len)} and returns one value per configured path. A path
+     * that is not present in the JSON produces a {@code null} slot. The returned array is freshly
+     * allocated, so callers may store/share it without worrying about subsequent {@code parse()} calls.
+     *
+     * @param buffer source bytes (UTF-8). Must contain a JSON object or array at the root
+     * @param len    number of valid bytes in {@code buffer}
+     * @return one element per configured path
+     */
     public Object[] parse(byte[] buffer, int len) {
-        if (buffer == null || buffer.length == 0) {
-            return emptyResult;
+        if (buffer == null || len == 0) {
+            return new Object[result.length];
         }
         padded = padIfNeeded(buffer, len);
         Utf8Validator.validate(padded, len);
@@ -159,10 +214,16 @@ public class PathsBasedJsonParser {
             while (collected < fieldNum && hasFields) {
                 String key = jsonIterator.getObjectKey();
                 jsonIterator.moveToFieldValue();
-                if (ptr.getChildren().containsKey(key)) {
-                    ptr = ptr.getChildren().get(key);
+                OnDemandJsonValue child = ptr.getChildren().get(key);
+                if (child != null) {
+                    // Guard against duplicate JSON keys: only increment `collected` the first time a
+                    // particular requested child is visited within this parse() call.
+                    if (child.getVisitedVersion() < currentVersion) {
+                        child.setVisitedVersion(currentVersion);
+                        collected++;
+                    }
+                    ptr = child;
                     parseElement();
-                    collected++;
                     ptr = ptr.getParent();
                 } else {
                     jsonIterator.skipChild();
@@ -181,8 +242,9 @@ public class PathsBasedJsonParser {
             int index = 0;
             int parentDepth = jsonIterator.getDepth() - 2;
             while (collected < fieldNum && hasFields) {
-                if (ptr.getChildren().containsKey(index)) {
-                    ptr = ptr.getChildren().get(index);
+                OnDemandJsonValue child = ptr.getChildren().get(index);
+                if (child != null) {
+                    ptr = child;
                     parseElement();
                     collected++;
                     ptr = ptr.getParent();
@@ -206,9 +268,12 @@ public class PathsBasedJsonParser {
                 parseArray();
             }
             if (ptr.isLeaf()) {
-                int endOffset = bitIndexes.peek();
+                // The closing '}' or ']' was the last structural element consumed; using its offset
+                // (instead of bitIndexes.peek(), which already points at the *next* element) avoids
+                // capturing trailing whitespace between the bracket and the next structural char.
+                int endOffsetInclusive = jsonIterator.lastConsumedOffset();
                 ptr.setVersion(currentVersion);
-                ptr.setValue(new String(padded, startOffset, endOffset - startOffset));
+                ptr.setValue(new String(padded, startOffset, endOffsetInclusive - startOffset + 1));
             }
         } else {
             if (ptr.isLeaf()) {
@@ -219,17 +284,22 @@ public class PathsBasedJsonParser {
     }
 
     private Object[] getResult() {
-        for (int i = 0; i < result.length; i++) {
+        // Allocate a fresh result array so that callers may safely retain references across parse() calls.
+        Object[] out = new Object[result.length];
+        for (int i = 0; i < row.length; i++) {
             if (row[i].getVersion() < currentVersion) {
-                result[i] = null;
-                continue;
+                out[i] = null;
+            } else {
+                out[i] = row[i].getValue();
             }
-            result[i] = row[i].getValue();
         }
-        return result;
+        return out;
     }
 
     private byte[] padIfNeeded(byte[] buffer, int len) {
+        if (len > DEFAULT_CAPACITY) {
+            throw new JsonParsingException("input json exceeds max supported size (" + DEFAULT_CAPACITY + " bytes)");
+        }
         if (buffer.length - len < PADDING) {
             System.arraycopy(buffer, 0, paddedBuffer, 0, len);
             return paddedBuffer;

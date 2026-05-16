@@ -670,6 +670,15 @@ class OnDemandJsonIterator {
         return depth;
     }
 
+    /**
+     * Returns the offset of the last consumed structural character. After fully parsing an object/array,
+     * this points at its closing {@code '}'} or {@code ']'}, allowing callers to extract the raw slice
+     * without trailing whitespace that may appear before the next structural element.
+     */
+    int lastConsumedOffset() {
+        return indexer.previous();
+    }
+
     private JsonParsingException unexpectedCharException(int idx, char expected) {
         if (indexer.isPastEnd()) {
             return new JsonParsingException("Expected '" + expected + "' but reached end of buffer.");
