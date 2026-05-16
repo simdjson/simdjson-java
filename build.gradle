@@ -226,11 +226,13 @@ publishing {
 
             pom {
                 name = project.name
-                description = 'A Java version of simdjson, a high-performance JSON parser utilizing SIMD instructions.'
-                url = 'https://github.com/simdjson/simdjson-java'
+                description = 'OnDemandSimdJson-java: a path-based on-demand JSON parser built on simdjson-java. ' +
+                        'Optimized for high-throughput multi-field projection (JSON-tuple) workloads - ' +
+                        'extracts pre-declared paths directly without materializing intermediate JSON nodes.'
+                url = 'https://github.com/heykirby/simdjson-java'
                 issueManagement {
                     system = 'GitHub Issue Tracking'
-                    url = 'https://github.com/simdjson/simdjson-java/issues'
+                    url = 'https://github.com/heykirby/simdjson-java/issues'
                 }
                 licenses {
                     license {
@@ -246,9 +248,9 @@ publishing {
                     }
                 }
                 scm {
-                    url = 'https://github.com/simdjson/simdjson-java'
-                    connection = 'scm:git@github.com:simdjson/simdjson-java.git'
-                    developerConnection = 'scm:git@github.com:simdjson/simdjson-java.git'
+                    url = 'https://github.com/heykirby/simdjson-java'
+                    connection = 'scm:git@github.com:heykirby/simdjson-java.git'
+                    developerConnection = 'scm:git@github.com:heykirby/simdjson-java.git'
                 }
             }
         }
