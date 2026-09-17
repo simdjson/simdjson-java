@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         version: [ 25 ]
-        vector-length: [ 256, 512 ]
+        vector-length: [ 128, 256, 512 ]
 
     steps:
       - uses: actions/checkout@v4

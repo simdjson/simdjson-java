@@ -27,12 +27,17 @@ class VectorUtils {
                 BYTE_SPECIES = ByteVector.SPECIES_256;
                 INT_SPECIES = IntVector.SPECIES_256;
             }
+            case "128" -> {
+                BYTE_SPECIES = ByteVector.SPECIES_128;
+                INT_SPECIES = IntVector.SPECIES_128;
+            }
             default -> throw new IllegalArgumentException("Unsupported vector species: " + species);
         }
     }
 
     private static void assertSupportForSpecies(VectorSpecies<?> species) {
-        if (species.vectorShape() != VectorShape.S_256_BIT && species.vectorShape() != VectorShape.S_512_BIT) {
+        VectorShape shape = species.vectorShape();
+        if (shape != VectorShape.S_128_BIT && shape != VectorShape.S_256_BIT && shape != VectorShape.S_512_BIT) {
             throw new IllegalArgumentException("Unsupported vector species: " + species);
         }
     }

@@ -5,6 +5,7 @@ import jdk.incubator.vector.VectorShuffle;
 
 import java.util.Arrays;
 
+import static jdk.incubator.vector.ByteVector.SPECIES_128;
 import static jdk.incubator.vector.ByteVector.SPECIES_256;
 import static jdk.incubator.vector.ByteVector.SPECIES_512;
 import static jdk.incubator.vector.VectorOperators.ULE;
@@ -42,10 +43,177 @@ class StructuralIndexer {
     void index(byte[] buffer, int length) {
         bitIndexes.reset();
         switch (VECTOR_BIT_SIZE) {
+            case 128 -> index128(buffer, length);
             case 256 -> index256(buffer, length);
             case 512 -> index512(buffer, length);
-            default -> throw new UnsupportedOperationException("Unsupported vector width: " + VECTOR_BIT_SIZE * 64);
+            default -> throw new UnsupportedOperationException("Unsupported vector width: " + VECTOR_BIT_SIZE);
         }
+    }
+
+    /**
+     * Stage-1 indexer for 128-bit vectors: four 16-byte lanes per 64-byte block (same layout as simdjson ARM64
+     * {@code simd8x64} / {@code index<64>}).
+     */
+    private void index128(byte[] buffer, int length) {
+        long prevInString = 0;
+        long prevEscaped = 0;
+        long prevStructurals = 0;
+        long unescapedCharsError = 0;
+        long prevScalar = 0;
+
+        int loopBound = SPECIES_512.loopBound(length);
+        int offset = 0;
+        int blockIndex = 0;
+        for (; offset < loopBound; offset += STEP_SIZE) {
+            ByteVector chunk0 = ByteVector.fromArray(SPECIES_128, buffer, offset);
+            ByteVector chunk1 = ByteVector.fromArray(SPECIES_128, buffer, offset + 16);
+            ByteVector chunk2 = ByteVector.fromArray(SPECIES_128, buffer, offset + 32);
+            ByteVector chunk3 = ByteVector.fromArray(SPECIES_128, buffer, offset + 48);
+
+            long backslash = pack128(
+                    chunk0.eq(BACKSLASH).toLong(),
+                    chunk1.eq(BACKSLASH).toLong(),
+                    chunk2.eq(BACKSLASH).toLong(),
+                    chunk3.eq(BACKSLASH).toLong());
+
+            long escaped;
+            if (backslash == 0) {
+                escaped = prevEscaped;
+                prevEscaped = 0;
+            } else {
+                backslash &= ~prevEscaped;
+                long followsEscape = backslash << 1 | prevEscaped;
+                long oddSequenceStarts = backslash & ODD_BITS_MASK & ~followsEscape;
+
+                long sequencesStartingOnEvenBits = oddSequenceStarts + backslash;
+                prevEscaped = ((oddSequenceStarts >>> 1) + (backslash >>> 1) + ((oddSequenceStarts & backslash) & 1)) >>> 63;
+
+                long invertMask = sequencesStartingOnEvenBits << 1;
+                escaped = (EVEN_BITS_MASK ^ invertMask) & followsEscape;
+            }
+
+            long unescaped = pack128(
+                    chunk0.compare(ULE, LAST_CONTROL_CHARACTER).toLong(),
+                    chunk1.compare(ULE, LAST_CONTROL_CHARACTER).toLong(),
+                    chunk2.compare(ULE, LAST_CONTROL_CHARACTER).toLong(),
+                    chunk3.compare(ULE, LAST_CONTROL_CHARACTER).toLong());
+
+            long quote0 = chunk0.eq(QUOTE).toLong();
+            long quote1 = chunk1.eq(QUOTE).toLong();
+            long quote2 = chunk2.eq(QUOTE).toLong();
+            long quote3 = chunk3.eq(QUOTE).toLong();
+            long quote = pack128(quote0, quote1, quote2, quote3) & ~escaped;
+
+            long inString = prefixXor(quote) ^ prevInString;
+            prevInString = inString >> 63;
+
+            VectorShuffle<Byte> chunk0Low = chunk0.and(LOW_NIBBLE_MASK).toShuffle();
+            VectorShuffle<Byte> chunk1Low = chunk1.and(LOW_NIBBLE_MASK).toShuffle();
+            VectorShuffle<Byte> chunk2Low = chunk2.and(LOW_NIBBLE_MASK).toShuffle();
+            VectorShuffle<Byte> chunk3Low = chunk3.and(LOW_NIBBLE_MASK).toShuffle();
+
+            long whitespace = pack128(
+                    chunk0.eq(WHITESPACE_TABLE.rearrange(chunk0Low)).toLong(),
+                    chunk1.eq(WHITESPACE_TABLE.rearrange(chunk1Low)).toLong(),
+                    chunk2.eq(WHITESPACE_TABLE.rearrange(chunk2Low)).toLong(),
+                    chunk3.eq(WHITESPACE_TABLE.rearrange(chunk3Low)).toLong());
+
+            long op = pack128(
+                    chunk0.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk0Low)).toLong(),
+                    chunk1.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk1Low)).toLong(),
+                    chunk2.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk2Low)).toLong(),
+                    chunk3.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk3Low)).toLong());
+
+            long scalar = ~(op | whitespace);
+            long nonQuoteScalar = scalar & ~quote;
+            long followsNonQuoteScalar = nonQuoteScalar << 1 | prevScalar;
+            prevScalar = nonQuoteScalar >>> 63;
+            long potentialScalarStart = scalar & ~followsNonQuoteScalar;
+            long potentialStructuralStart = op | potentialScalarStart;
+            bitIndexes.write(blockIndex, prevStructurals);
+            blockIndex += STEP_SIZE;
+            prevStructurals = potentialStructuralStart & ~(inString ^ quote);
+            unescapedCharsError |= unescaped & inString;
+        }
+
+        byte[] remainder = remainder(buffer, length, blockIndex);
+        ByteVector chunk0 = ByteVector.fromArray(SPECIES_128, remainder, 0);
+        ByteVector chunk1 = ByteVector.fromArray(SPECIES_128, remainder, 16);
+        ByteVector chunk2 = ByteVector.fromArray(SPECIES_128, remainder, 32);
+        ByteVector chunk3 = ByteVector.fromArray(SPECIES_128, remainder, 48);
+
+        long backslash = pack128(
+                chunk0.eq(BACKSLASH).toLong(),
+                chunk1.eq(BACKSLASH).toLong(),
+                chunk2.eq(BACKSLASH).toLong(),
+                chunk3.eq(BACKSLASH).toLong());
+
+        long escaped;
+        if (backslash == 0) {
+            escaped = prevEscaped;
+        } else {
+            backslash &= ~prevEscaped;
+            long followsEscape = backslash << 1 | prevEscaped;
+            long oddSequenceStarts = backslash & ODD_BITS_MASK & ~followsEscape;
+
+            long sequencesStartingOnEvenBits = oddSequenceStarts + backslash;
+            long invertMask = sequencesStartingOnEvenBits << 1;
+            escaped = (EVEN_BITS_MASK ^ invertMask) & followsEscape;
+        }
+
+        long unescaped = pack128(
+                chunk0.compare(ULE, LAST_CONTROL_CHARACTER).toLong(),
+                chunk1.compare(ULE, LAST_CONTROL_CHARACTER).toLong(),
+                chunk2.compare(ULE, LAST_CONTROL_CHARACTER).toLong(),
+                chunk3.compare(ULE, LAST_CONTROL_CHARACTER).toLong());
+
+        long quote = pack128(
+                chunk0.eq(QUOTE).toLong(),
+                chunk1.eq(QUOTE).toLong(),
+                chunk2.eq(QUOTE).toLong(),
+                chunk3.eq(QUOTE).toLong()) & ~escaped;
+
+        long inString = prefixXor(quote) ^ prevInString;
+        prevInString = inString >> 63;
+
+        VectorShuffle<Byte> chunk0Low = chunk0.and(LOW_NIBBLE_MASK).toShuffle();
+        VectorShuffle<Byte> chunk1Low = chunk1.and(LOW_NIBBLE_MASK).toShuffle();
+        VectorShuffle<Byte> chunk2Low = chunk2.and(LOW_NIBBLE_MASK).toShuffle();
+        VectorShuffle<Byte> chunk3Low = chunk3.and(LOW_NIBBLE_MASK).toShuffle();
+
+        long whitespace = pack128(
+                chunk0.eq(WHITESPACE_TABLE.rearrange(chunk0Low)).toLong(),
+                chunk1.eq(WHITESPACE_TABLE.rearrange(chunk1Low)).toLong(),
+                chunk2.eq(WHITESPACE_TABLE.rearrange(chunk2Low)).toLong(),
+                chunk3.eq(WHITESPACE_TABLE.rearrange(chunk3Low)).toLong());
+
+        long op = pack128(
+                chunk0.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk0Low)).toLong(),
+                chunk1.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk1Low)).toLong(),
+                chunk2.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk2Low)).toLong(),
+                chunk3.or((byte) 0x20).eq(OP_TABLE.rearrange(chunk3Low)).toLong());
+
+        long scalar = ~(op | whitespace);
+        long nonQuoteScalar = scalar & ~quote;
+        long followsNonQuoteScalar = nonQuoteScalar << 1 | prevScalar;
+        long potentialScalarStart = scalar & ~followsNonQuoteScalar;
+        long potentialStructuralStart = op | potentialScalarStart;
+        bitIndexes.write(blockIndex, prevStructurals);
+        blockIndex += STEP_SIZE;
+        prevStructurals = potentialStructuralStart & ~(inString ^ quote);
+        unescapedCharsError |= unescaped & inString;
+        bitIndexes.write(blockIndex, prevStructurals);
+        bitIndexes.finish();
+        if (prevInString != 0) {
+            throw new JsonParsingException("Unclosed string. A string is opened, but never closed.");
+        }
+        if (unescapedCharsError != 0) {
+            throw new JsonParsingException("Unescaped characters. Within strings, there are characters that should be escaped.");
+        }
+    }
+
+    private static long pack128(long mask0, long mask1, long mask2, long mask3) {
+        return mask0 | (mask1 << 16) | (mask2 << 32) | (mask3 << 48);
     }
 
     private void index256(byte[] buffer, int length) {

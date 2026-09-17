@@ -123,7 +123,7 @@ tasks.register('downloadTestData', Exec) {
     }
 }
 
-// Configuration common to ALL Test tasks (including 'test', 'test256', 'test512')
+// Configuration common to ALL Test tasks (including 'test', 'test128', 'test256', 'test512')
 tasks.withType(Test).configureEach {
     dependsOn tasks.named('downloadTestData')
 
@@ -138,7 +138,7 @@ tasks.withType(Test).configureEach {
     }
 }
 
-// --- Test Variants (256/512) ---
+// --- Test Variants (128/256/512) ---
 test {
     useJUnitPlatform()
     jvmArgs += [
@@ -147,15 +147,14 @@ test {
     failOnNoDiscoveredTests = false
 }
 
-// Generate test tasks for specific species (256, 512)
-[256, 512].each { species ->
+// Generate test tasks for specific species (128, 256, 512)
+[128, 256, 512].each { species ->
     tasks.register("test${species}", Test) {
         group = 'verification'
         description = "Runs tests with org.simdjson.species=${species}"
 
-        // Fix: Removed 'dependsOn test'. This allows test256 to run independently.
-        // We use mustRunAfter so they don't interleave output if run together via 'check'.
-        dependsOn tasks.named('test')
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
 
         useJUnitPlatform()
         jvmArgs += [
@@ -167,6 +166,7 @@ test {
 }
 
 tasks.named('check') {
+    dependsOn tasks.named('test128')
     dependsOn tasks.named('test256')
     dependsOn tasks.named('test512')
 }
