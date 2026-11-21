@@ -233,9 +233,7 @@ class NumberParser {
         }
 
         long exponent = 0;
-        boolean floatingPointNumber = false;
         if ('.' == buffer[currentIdx]) {
-            floatingPointNumber = true;
             currentIdx++;
             int firstIdxAfterPeriod = currentIdx;
             digitsParsingResult = parseDigits(buffer, currentIdx, digitsParsingResult.digits());
@@ -247,14 +245,10 @@ class NumberParser {
             digitCount = currentIdx - digitsStartIdx;
         }
         if (isExponentIndicator(buffer[currentIdx])) {
-            floatingPointNumber = true;
             currentIdx++;
             ExponentParsingResult exponentParsingResult = exponentParser.parse(buffer, currentIdx, exponent);
             exponent = exponentParsingResult.exponent();
             currentIdx = exponentParsingResult.currentIdx();
-        }
-        if (!floatingPointNumber) {
-            throw new JsonParsingException("Invalid floating-point number. Fraction or exponent part is missing.");
         }
         if (currentIdx < len && !isStructuralOrWhitespace(buffer[currentIdx])) {
             throw new JsonParsingException("Number has to be followed by a structural character or whitespace.");
@@ -280,9 +274,7 @@ class NumberParser {
         }
 
         long exponent = 0;
-        boolean floatingPointNumber = false;
         if ('.' == buffer[currentIdx]) {
-            floatingPointNumber = true;
             currentIdx++;
             int firstIdxAfterPeriod = currentIdx;
             digitsParsingResult = parseDigits(buffer, currentIdx, digitsParsingResult.digits());
@@ -294,14 +286,10 @@ class NumberParser {
             digitCount = currentIdx - digitsStartIdx;
         }
         if (isExponentIndicator(buffer[currentIdx])) {
-            floatingPointNumber = true;
             currentIdx++;
             ExponentParsingResult exponentParsingResult = exponentParser.parse(buffer, currentIdx, exponent);
             exponent = exponentParsingResult.exponent();
             currentIdx = exponentParsingResult.currentIdx();
-        }
-        if (!floatingPointNumber) {
-            throw new JsonParsingException("Invalid floating-point number. Fraction or exponent part is missing.");
         }
         if (currentIdx < len && !isStructuralOrWhitespace(buffer[currentIdx])) {
             throw new JsonParsingException("Number has to be followed by a structural character or whitespace.");
