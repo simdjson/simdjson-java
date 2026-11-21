@@ -51,6 +51,83 @@ record SimdJsonTwitter(List<SimdJsonStatus> statuses) {
 }
 ```
 
+### On-Demand Parser
+
+The on-demand parser builds no DOM. `parseOnDemand` indexes the document and returns a forward-only cursor that decodes 
+only the values you ask for and skips everything else with `skipChild()`. Strings and field names are decoded into your 
+own byte array, which needs `OnDemandJsonIterator.STRING_BUFFER_PADDING` spare bytes after the longest string you expect.
+
+```java
+byte[] json = loadTwitterJson();
+byte[] statuses = "statuses".getBytes(UTF_8);
+byte[] id = "id".getBytes(UTF_8);
+byte[] name = new byte[64 + OnDemandJsonIterator.STRING_BUFFER_PADDING];
+
+SimdJsonParser parser = new SimdJsonParser();
+OnDemandJsonIterator it = parser.parseOnDemand(json, json.length);
+if (it.startIteratingRootObject() == IteratorResult.NOT_EMPTY) {
+    do {
+        int nameLength = it.getFieldName(name);
+        it.moveToFieldValue();
+        if (!Arrays.equals(name, 0, nameLength, statuses, 0, statuses.length)) {
+            it.skipChild();
+        } else if (it.startIteratingArray() == IteratorResult.NOT_EMPTY) {
+            do {
+                if (it.startIteratingObject() == IteratorResult.NOT_EMPTY) {
+                    do {
+                        nameLength = it.getFieldName(name);
+                        it.moveToFieldValue();
+                        if (Arrays.equals(name, 0, nameLength, id, 0, id.length)) {
+                            System.out.println(it.getNonNullLong());
+                        } else {
+                            it.skipChild();
+                        }
+                    } while (it.nextObjectField());
+                }
+            } while (it.nextArrayElement());
+        }
+    } while (it.nextObjectField());
+}
+```
+
+`peekType()` tells you the JSON type of the next value before you pick a getter. The cursor belongs to its parser and is 
+valid until the parser's next parse call. See the javadoc of `OnDemandJsonIterator` for the details, including how to skip 
+the rest of an object or array from inside it.
+
+### Allocation-Free Navigation
+
+`JsonValue` can also be navigated with plain `int` indices, which avoids allocating a `JsonValue`, an iterator or a 
+`String` per value. Field names are passed as pre-encoded byte arrays, and strings can be read straight from the parser's 
+buffer with `stringBytes()`, `byteOffset(int)` and `byteLength(int)`.
+
+```java
+JsonValue doc = parser.parse(json, json.length);
+int tweets = doc.field(doc.index(), STATUSES);
+if (tweets >= 0 && doc.isArrayAt(tweets)) {
+    int end = doc.scopeEnd(tweets);
+    for (int tweet = doc.firstElement(tweets); tweet >= 0 && tweet < end; tweet = doc.advance(tweet)) {
+        int id = doc.isObjectAt(tweet) ? doc.field(tweet, ID) : -1;
+        if (id >= 0 && doc.isLongAt(id)) {
+            System.out.println(doc.longAt(id));
+        }
+    }
+}
+```
+
+Methods that need a value of a particular type, such as `field` or `longAt`, throw an `IllegalArgumentException` for an 
+index of another type; the `is...At` methods test the type first.
+
+### Skipping UTF-8 Validation
+
+By default, every document is validated as UTF-8. If your input is already known to be valid, for example because a 
+trusted component produced or checked it, you can skip that step:
+
+```java
+SimdJsonParser parser = new SimdJsonParser(capacity, maxDepth, false);
+```
+
+Invalid UTF-8 is then not detected, and strings decoded from it may be malformed.
+
 ## Installation
 
 The library is available in the [Maven Central Repository](https://mvnrepository.com/artifact/org.simdjson/simdjson-java). 
@@ -80,6 +157,34 @@ We require Java 24 or better.
 To run the JMH benchmarks, execute the following command:
 
 ```./gradlew jmh```
+
+### Synthea FHIR Benchmark
+
+[SyntheaBundleBenchmark](src/jmh/java/org/simdjson/synthea/SyntheaBundleBenchmark.java) extracts a fixed set of fields 
+from [Synthea](https://github.com/synthetichealth/synthea) FHIR bundles with the DOM, index-based, on-demand and 
+schema-based APIs. No data is included: generate bundles with Synthea and point the benchmark at the output directory. 
+Build the benchmark jar first:
+
+```./gradlew clean jmhJar```
+
+Check that all modes extract the same values (exit status 0 when they agree):
+
+```
+java --add-modules jdk.incubator.vector -Dsynthea.dir=/path/to/output/fhir \
+     -cp build/libs/simdjson-java-*-jmh.jar org.simdjson.synthea.SyntheaBundleVerifier
+```
+
+Run the benchmark:
+
+```
+java -jar build/libs/simdjson-java-*-jmh.jar 'org.simdjson.synthea.SyntheaBundleBenchmark' \
+     -jvmArgsPrepend '--add-modules=jdk.incubator.vector' \
+     -jvmArgsAppend '-Xmx8g -Dsynthea.dir=/path/to/output/fhir'
+```
+
+Both take the same system properties: `synthea.dir` (required), `synthea.maxFiles` (default 256), `synthea.maxBytes`, 
+`synthea.expectFingerprint` and `synthea.validateUtf8` (default `true`). Files are selected in a fixed order, and the 
+printed fingerprint identifies the selection.
 
 ## Tests
 

@@ -157,6 +157,10 @@ test {
         // We use mustRunAfter so they don't interleave output if run together via 'check'.
         dependsOn tasks.named('test')
 
+        // Gradle 9 no longer wires custom Test tasks to the test source set.
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+
         useJUnitPlatform()
         jvmArgs += [
                 '--add-modules', 'jdk.incubator.vector',
@@ -180,6 +184,8 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.compileJmhScala.classpath = sourceSets.main.compileClasspath
+// Scala 2.13.16 cannot emit class files for Java 25+, so the Scala benchmark sources target Java 21.
+tasks.compileJmhScala.scalaCompileOptions.additionalParameters = ['-release:21']
 tasks.compileJmhJava.classpath += files(sourceSets.jmh.scala.classesDirectory)
 
 compileTestJava {

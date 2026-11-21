@@ -57,6 +57,11 @@ class BitIndexes {
         return indexes[writeIdx - 1];
     }
 
+    int lastIndex() {
+        assert readIdx > 0;
+        return indexes[readIdx - 1];
+    }
+
     int advanceAndGet() {
         assert readIdx + 1 <= writeIdx;
         return indexes[++readIdx];
@@ -69,6 +74,10 @@ class BitIndexes {
 
     boolean hasNext() {
         return writeIdx > readIdx;
+    }
+
+    boolean isStart() {
+        return readIdx == 0;
     }
 
     boolean isEnd() {

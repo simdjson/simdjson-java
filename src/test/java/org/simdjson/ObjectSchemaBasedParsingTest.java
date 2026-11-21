@@ -656,6 +656,21 @@ public class ObjectSchemaBasedParsingTest {
         assertThat(object.ccc()).isEqualTo(3);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {'x', 0x7F, 0xE9, 0x20AC})
+    public void unknownFieldWithMalformedValueIsSkipped(int codePoint) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        String value = String.valueOf((char) codePoint);
+        byte[] json = toUtf8("{\"a\": [" + value + "], \"b\": {\"c\": " + value + "}, \"field\": \"x\"}");
+
+        // when
+        RecordWithStringField object = parser.parse(json, json.length, RecordWithStringField.class);
+
+        // then
+        assertThat(object.field()).isEqualTo("x");
+    }
+
     private record Issue50(long aaa, long bbb, long ccc) {
 
     }

@@ -28,7 +28,9 @@ import org.simdjson.testutils.MapSource;
 import org.simdjson.testutils.SchemaBasedRandomValueSource;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1235,8 +1237,123 @@ public class FloatingPointNumberSchemaBasedParsingTest {
     }
 
     @CartesianTest
-    public void integralNumberAsFloatingPointNumber(
-            @Values(strings = {"123", "0", "-123"}) String jsonStr,
+    public void integralNumberAsFloatingPointNumberAtRoot(
+            @CartesianTestCsv({
+                    "0",
+                    "-0",
+                    "123",
+                    "-123",
+                    "16777216",
+                    "16777217",
+                    "-16777217",
+                    "9007199254740992",
+                    "9007199254740993",
+                    "-9007199254740993",
+                    "9223372036854775807",
+                    "-9223372036854775808",
+                    "9999999999999999999",
+                    "18446744073709551615",
+                    "123456789012345678901234567890",
+                    "-123456789012345678901234567890",
+                    "1000000000000000000000000000000000000000"
+            }) CartesianTestCsvRow row,
+            @Values(classes = {float.class, Float.class, Double.class, double.class}) Class<?> expectedType) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(row.getValueAsString(0));
+
+        // when
+        Object value = parser.parse(json, json.length, expectedType);
+
+        // then
+        assertThat(value).isEqualTo(row.getValue(0, expectedType));
+    }
+
+    @CartesianTest
+    public void integralNumberAsFloatingPointNumberAtObjectField(
+            @CartesianTestCsv({
+                    "0",
+                    "-0",
+                    "-123",
+                    "16777217",
+                    "9007199254740993",
+                    "9223372036854775807",
+                    "123456789012345678901234567890"
+            }) CartesianTestCsvRow row,
+            @Values(classes = {
+                    RecordWithFloatField.class,
+                    RecordWithPrimitiveFloatField.class,
+                    RecordWithDoubleField.class,
+                    RecordWithPrimitiveDoubleField.class
+            }) Class<?> schema) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8("{\"field\": " + row.getValueAsString(0) + "}");
+        Class<?> fieldType = schema.getRecordComponents()[0].getType();
+
+        // when
+        Object object = parser.parse(json, json.length, schema);
+
+        // then
+        assertThat(object).extracting("field").isEqualTo(row.getValue(0, fieldType));
+    }
+
+    @CartesianTest
+    public void integralNumbersInArrayOfFloatingPointNumbersAtRoot(
+            @CartesianTestCsv({
+                    "0",
+                    "-0",
+                    "-123",
+                    "16777217",
+                    "9007199254740993",
+                    "9223372036854775807",
+                    "123456789012345678901234567890"
+            }) CartesianTestCsvRow row,
+            @Values(classes = {float[].class, Float[].class, Double[].class, double[].class}) Class<?> schema) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        String numberStr = row.getValueAsString(0);
+        byte[] json = toUtf8("[" + numberStr + ", " + numberStr + "]");
+        Class<?> elementType = schema.getComponentType();
+        Object expected = Array.newInstance(elementType, 2);
+        Array.set(expected, 0, row.getValue(0, elementType));
+        Array.set(expected, 1, row.getValue(0, elementType));
+
+        // when
+        Object array = parser.parse(json, json.length, schema);
+
+        // then
+        assertThat(array).isEqualTo(expected);
+    }
+
+    @CartesianTest
+    public void integralNumbersInListOfFloatingPointNumbersAtObjectField(
+            @CartesianTestCsv({
+                    "0",
+                    "-0",
+                    "-123",
+                    "16777217",
+                    "9007199254740993",
+                    "9223372036854775807",
+                    "123456789012345678901234567890"
+            }) CartesianTestCsvRow row,
+            @Values(classes = {RecordWithFloatListField.class, RecordWithDoubleListField.class}) Class<?> schema) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        String numberStr = row.getValueAsString(0);
+        byte[] json = toUtf8("{\"field\": [" + numberStr + ", " + numberStr + "]}");
+        Class<?> elementType = schema == RecordWithFloatListField.class ? Float.class : Double.class;
+
+        // when
+        Object object = parser.parse(json, json.length, schema);
+
+        // then
+        assertThat(object).extracting("field").isEqualTo(List.of(row.getValue(0, elementType), row.getValue(0, elementType)));
+    }
+
+    @CartesianTest
+    public void leadingZerosAreNotAllowedInIntegralNumber(
+            @Values(strings = {"00", "01", "-00", "-01", "0123"}) String jsonStr,
             @Values(classes = {float.class, Float.class, Double.class, double.class}) Class<?> expectedType) {
         // given
         SimdJsonParser parser = new SimdJsonParser();
@@ -1247,7 +1364,82 @@ public class FloatingPointNumberSchemaBasedParsingTest {
 
         // then
         assertThat(ex)
-                .hasMessage("Invalid floating-point number. Fraction or exponent part is missing.");
+                .hasMessage("Invalid number. Leading zeroes are not allowed.");
+    }
+
+    @CartesianTest
+    public void minusHasToBeFollowedByAtLeastOneDigitInIntegralNumber(
+            @Values(strings = {"-", "-a1", "--1", "+1"}) String jsonStr,
+            @Values(classes = {float.class, Float.class, Double.class, double.class}) Class<?> expectedType) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(jsonStr);
+
+        // when
+        JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length, expectedType));
+
+        // then
+        assertThat(ex)
+                .hasMessage("Invalid number. Minus has to be followed by a digit.");
+    }
+
+    @CartesianTest
+    public void integralNumberHasToBeFollowedByStructuralCharacterOrWhitespace(
+            @Values(strings = {"1a", "-1-2", "12-3", "1-", "123456789012345678901234567890a"}) String jsonStr,
+            @Values(classes = {float.class, Float.class, Double.class, double.class}) Class<?> expectedType) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(jsonStr);
+
+        // when
+        JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length, expectedType));
+
+        // then
+        assertThat(ex)
+                .hasMessage("Number has to be followed by a structural character or whitespace.");
+    }
+
+    @CartesianTest
+    public void moreValuesThanOneIntegralNumberAtRoot(
+            @Values(strings = {"123,", "123{}", "1:", "1 2"}) String jsonStr,
+            @Values(classes = {float.class, Float.class, Double.class, double.class}) Class<?> expectedType) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8(jsonStr);
+
+        // when
+        JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length, expectedType));
+
+        // then
+        assertThat(ex)
+                .hasMessage("More than one JSON value at the root of the document, or extra characters at the end of the JSON!");
+    }
+
+    @CartesianTest
+    public void invalidIntegralNumberAtObjectField(
+            @CartesianTestCsv({
+                    "01, Invalid number. Leading zeroes are not allowed.",
+                    "-01, Invalid number. Leading zeroes are not allowed.",
+                    "-, Invalid number. Minus has to be followed by a digit.",
+                    "1a, Number has to be followed by a structural character or whitespace.",
+                    "1-2, Number has to be followed by a structural character or whitespace."
+            }) CartesianTestCsvRow row,
+            @Values(classes = {
+                    RecordWithFloatField.class,
+                    RecordWithPrimitiveFloatField.class,
+                    RecordWithDoubleField.class,
+                    RecordWithPrimitiveDoubleField.class
+            }) Class<?> schema) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        byte[] json = toUtf8("{\"field\": " + row.getValueAsString(0) + "}");
+
+        // when
+        JsonParsingException ex = assertThrows(JsonParsingException.class, () -> parser.parse(json, json.length, schema));
+
+        // then
+        assertThat(ex)
+                .hasMessage(row.getValueAsString(1));
     }
 
     @ParameterizedTest
