@@ -10,6 +10,9 @@ class StringParser {
     private static final byte BACKSLASH = '\\';
     private static final byte QUOTE = '"';
     private static final int BYTES_PROCESSED = VectorUtils.BYTE_SPECIES.vectorByteSize();
+    // Every iteration of doParseString stores a whole vector at the current destination index, and the final
+    // iteration stores it at most at the end of the decoded string, so up to one vector lands past the string.
+    static final int MAX_BYTES_WRITTEN_PAST_STRING = BYTES_PROCESSED;
     private static final int MIN_HIGH_SURROGATE = 0xD800;
     private static final int MAX_HIGH_SURROGATE = 0xDBFF;
     private static final int MIN_LOW_SURROGATE = 0xDC00;

@@ -10,6 +10,7 @@ public class SimdJsonParser {
     private final BitIndexes bitIndexes;
     private final JsonIterator jsonIterator;
     private final SchemaBasedJsonIterator schemaBasedJsonIterator;
+    private final OnDemandJsonIterator onDemandJsonIterator;
     private final byte[] paddedBuffer;
 
     public SimdJsonParser() {
@@ -21,8 +22,33 @@ public class SimdJsonParser {
         byte[] stringBuffer = new byte[capacity];
         jsonIterator = new JsonIterator(bitIndexes, stringBuffer, capacity, maxDepth, PADDING);
         schemaBasedJsonIterator = new SchemaBasedJsonIterator(bitIndexes, stringBuffer, PADDING);
+        onDemandJsonIterator = new OnDemandJsonIterator(bitIndexes, PADDING);
         paddedBuffer = new byte[capacity];
         indexer = new StructuralIndexer(bitIndexes);
+    }
+
+    /**
+     * Prepares on-demand parsing of the first {@code len} bytes of {@code buffer}: validates the input as UTF-8,
+     * indexes its structural characters, and returns a forward-only cursor that decodes values only when asked. No
+     * tape is built. See {@link OnDemandJsonIterator} for how to use the cursor.
+     * <p>
+     * The parser returns the same cursor instance on every call. It is valid until the next call to any parse method
+     * of this parser.
+     *
+     * @param buffer the document; if fewer than 64 bytes follow {@code len}, the document is copied into an internal
+     *               buffer, otherwise the cursor reads {@code buffer} directly, which must then not change while the
+     *               cursor is in use
+     * @param len    the length of the document in bytes
+     * @return the cursor, positioned before the root value
+     * @throws JsonParsingException if the input is not valid UTF-8, contains no structural element, or has an
+     *                              unclosed string or unescaped control characters in a string
+     */
+    public OnDemandJsonIterator parseOnDemand(byte[] buffer, int len) {
+        byte[] padded = padIfNeeded(buffer, len);
+        reset();
+        stage1(padded, len);
+        onDemandJsonIterator.init(padded, len);
+        return onDemandJsonIterator;
     }
 
     public <T> T parse(byte[] buffer, int len, Class<T> expectedType) {
