@@ -1140,6 +1140,53 @@ public class OnDemandParsingTest {
         assertThat(onDemandFirst).isEqualTo(domFirst);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {'x', 0x7F, 0xE9, 0x20AC})
+    public void skipChildOverMalformedValueStartingWithAnyCharacter(int codePoint) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser();
+        String value = String.valueOf((char) codePoint);
+        byte[] json = toUtf8("[[" + value + "], {\"a\": " + value + "}, " + value + ", 1]");
+        OnDemandJsonIterator it = parser.parseOnDemand(json, json.length);
+        assertThat(it.startIteratingRootArray()).isEqualTo(IteratorResult.NOT_EMPTY);
+
+        // when
+        it.skipChild();
+        assertThat(it.nextArrayElement()).isTrue();
+        it.skipChild();
+        assertThat(it.nextArrayElement()).isTrue();
+        JsonParsingException ex = assertThrows(JsonParsingException.class, it::peekType);
+        it.skipChild();
+        assertThat(it.nextArrayElement()).isTrue();
+
+        // then
+        assertThat(ex).hasMessage("Unrecognized value starting at " + (json.length - 4 - toUtf8(value).length)
+                + ". Expected: object, array, string, number, 'true', 'false' or 'null'.");
+        assertThat(it.getNonNullLong()).isEqualTo(1);
+        assertThat(it.nextArrayElement()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0x80, 0xC0, 0xFF})
+    public void skipChildOverInvalidUtf8WithoutValidation(int invalidByte) {
+        // given
+        SimdJsonParser parser = new SimdJsonParser(1024, 64, false);
+        byte b = (byte) invalidByte;
+        byte[] json = {'[', '[', b, ']', ',', '{', '"', 'a', '"', ':', b, '}', ',', '1', ']'};
+        OnDemandJsonIterator it = parser.parseOnDemand(json, json.length);
+        assertThat(it.startIteratingRootArray()).isEqualTo(IteratorResult.NOT_EMPTY);
+
+        // when
+        it.skipChild();
+        assertThat(it.nextArrayElement()).isTrue();
+        it.skipChild();
+        assertThat(it.nextArrayElement()).isTrue();
+
+        // then
+        assertThat(it.getNonNullLong()).isEqualTo(1);
+        assertThat(it.nextArrayElement()).isFalse();
+    }
+
     private String fieldName(OnDemandJsonIterator it) {
         int length = it.getFieldName(stringBuffer);
         return new String(stringBuffer, 0, length, UTF_8);

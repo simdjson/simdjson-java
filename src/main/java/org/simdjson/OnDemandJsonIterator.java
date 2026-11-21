@@ -83,7 +83,7 @@ public class OnDemandJsonIterator {
     public static final int STRING_BUFFER_PADDING = StringParser.MAX_BYTES_WRITTEN_PAST_STRING;
 
     private static final byte SPACE = 0x20;
-    private static final int[] SKIP_DEPTH_PER_CHARACTER = new int[127];
+    private static final int[] SKIP_DEPTH_PER_CHARACTER = new int[256];
 
     static {
         Arrays.fill(SKIP_DEPTH_PER_CHARACTER, 0);
@@ -225,7 +225,7 @@ public class OnDemandJsonIterator {
             idx = indexer.getAndAdvance();
             character = buffer[idx];
 
-            int delta = SKIP_DEPTH_PER_CHARACTER[character];
+            int delta = SKIP_DEPTH_PER_CHARACTER[character & 0xFF];
             depth += delta;
             if (delta < 0 && depth <= parentDepth) {
                 assertNoMoreJsonValuesAfterRoot();
