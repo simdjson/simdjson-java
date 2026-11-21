@@ -157,6 +157,10 @@ test {
         // We use mustRunAfter so they don't interleave output if run together via 'check'.
         dependsOn tasks.named('test')
 
+        // Gradle 9 no longer wires custom Test tasks to the test source set.
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+
         useJUnitPlatform()
         jvmArgs += [
                 '--add-modules', 'jdk.incubator.vector',
